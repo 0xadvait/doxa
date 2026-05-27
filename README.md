@@ -1,27 +1,18 @@
 # doxa
 
-Build a local, verbatim-grounded belief base from sources you trust.
+Turn the sources you trust into a belief base you can query — where every answer is pinned to a **verbatim quote**, so the model can't make things up.
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)
 
-`doxa` mines essays, PDFs, web pages, transcripts, and notes into two linked
-records: a concise belief and the exact source quote that grounds it. You query
-the beliefs, but every answer remains traceable back to source text.
+Most "chat with your notes" tools let an LLM paraphrase your sources and quietly invent the rest. doxa doesn't. It mines essays, PDFs, web pages, and transcripts into two linked records — a concise **belief** and the **exact quote** that grounds it. You query the beliefs; every answer traces back to real source text. No quote, no claim.
 
-**Use doxa to:**
+- **Verbatim-grounded** — every belief links to an exact source quote; quotes are never model-generated.
+- **Local and portable** — a plain JSONL source of truth you can read, diff, and re-index.
+- **Any lens, any model** — mine a source through your perspective, with codex-cli / claude-cli (no API key) or OpenAI / Fireworks / Anthropic.
+- **Keyword → semantic → hybrid** — works with zero setup; add embeddings when you want them.
 
-- Turn trusted sources into queryable beliefs with linked verbatim evidence.
-- Keep a durable JSONL source of truth that can be inspected, copied, and
-  re-indexed.
-- Mine the same source through different lenses: strategy, philosophy, legal,
-  product, or your own.
-- Start with keyword retrieval and add semantic or hybrid search when you want
-  embeddings.
-- Give AI agents a grounded memory they can cite without inventing quotes.
-
-**For AI agents:** start with [AGENTS.md](AGENTS.md); the installable harness
-skill is [skill/SKILL.md](skill/SKILL.md).
+**For AI agents:** start with [AGENTS.md](AGENTS.md); install as a harness skill via [skill/SKILL.md](skill/SKILL.md).
 
 ---
 
@@ -130,9 +121,9 @@ Reproduce: `doxa query "What makes a life worth living?"`
 
 ## Why doxa exists
 
-Most "summarize my notes" tools optimize for fluency. That is useful, but it is
-also where hallucinations hide: the model can compress, overstate, merge claims,
-or invent wording that was never in the source.
+Fluency is where hallucinations hide: a summarizer can compress, overstate,
+merge claims, or invent wording that was never in the source. doxa trades a
+little fluency for a guarantee you can audit.
 
 `doxa` takes a stricter approach:
 
