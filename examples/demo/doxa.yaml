@@ -1,0 +1,23 @@
+project:
+  name: doxa-demo
+
+data:
+  dir: data
+  beliefs: beliefs.jsonl
+  quotes: quotes.jsonl
+  sources: sources.jsonl
+
+lens:
+  name: public-domain-beliefs
+  description: Extract durable claims about judgment, courage, liberty, and agency.
+  question: What does this source believe people should understand or do?
+  stances: [supports, questions, rejects, complicates]
+  tags: [agency, judgment, liberty]
+
+llm:
+  provider: codex-cli
+
+retrieval:
+  default_search: keyword
+  limit: 5
+

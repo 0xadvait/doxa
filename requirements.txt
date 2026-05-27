@@ -1,0 +1,21 @@
+# Core
+PyYAML==6.0.3
+
+# Embeddings
+fastembed==0.8.0
+
+# Postgres / pgvector
+psycopg2-binary==2.9.12
+pgvector==0.4.2
+
+# PDF
+PyMuPDF==1.27.2.3
+
+# YouTube
+yt-dlp==2026.3.17
+
+# OpenAI and OpenAI-compatible providers
+openai==2.38.0
+
+# Anthropic
+anthropic==0.104.1
