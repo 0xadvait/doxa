@@ -2,12 +2,131 @@
 
 Build a local, verbatim-grounded belief base from sources you trust.
 
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)
+
 `doxa` mines essays, PDFs, web pages, transcripts, and notes into two linked
-records: a concise belief and the exact quote that grounds it. You query the
-beliefs, but every answer is traceable back to source text.
+records: a concise belief and the exact source quote that grounds it. You query
+the beliefs, but every answer remains traceable back to source text.
+
+**Use doxa to:**
+
+- Turn trusted sources into queryable beliefs with linked verbatim evidence.
+- Keep a durable JSONL source of truth that can be inspected, copied, and
+  re-indexed.
+- Mine the same source through different lenses: strategy, philosophy, legal,
+  product, or your own.
+- Start with keyword retrieval and add semantic or hybrid search when you want
+  embeddings.
+- Give AI agents a grounded memory they can cite without inventing quotes.
 
 **For AI agents:** start with [AGENTS.md](AGENTS.md); the installable harness
 skill is [skill/SKILL.md](skill/SKILL.md).
+
+---
+
+## Quickstart
+
+```bash
+python -m pip install -e .
+doxa demo
+doxa query "self-reliance and conformity" --search keyword --top 2
+```
+
+With no `doxa.yaml` in the current directory, `doxa query` uses the bundled
+public-domain demo data from Emerson's "Self-Reliance", Plato's "Apology", and
+Madison's "Federalist No. 10".
+
+Example:
+
+```text
+1. Personhood requires resisting social conformity.
+   stance=supports conviction=0.91 score=4.7910
+   source=Self-Reliance / Ralph Waldo Emerson / 1841
+   quote="Ralph Waldo Emerson: Whoso would be a man must be a nonconformist."
+2. Self-trust is a necessary starting point for thought and action.
+   stance=supports conviction=0.93 score=4.7006
+   source=Self-Reliance / Ralph Waldo Emerson / 1841
+   quote="Ralph Waldo Emerson: Trust thyself: every heart vibrates to that iron string."
+```
+
+Keyword search works with no API key, database, embedding model, or network.
+
+---
+
+## Example questions & answers
+
+These examples are from the bundled public-domain demo and were generated with
+`--search keyword`. Keyword is the default, so the reproduce lines use the
+shorter command form.
+
+<details>
+<summary>Should I trust my own judgment over the crowd?</summary>
+
+The demo retrieves Emerson's belief that self-trust is necessary, but it also surfaces a real Socratic tension: confidence in judgment should be held alongside intellectual humility.
+
+`source=Self-Reliance / Ralph Waldo Emerson / 1841`
+`quote="Ralph Waldo Emerson: Trust thyself: every heart vibrates to that iron string."`
+
+`source=Apology / Plato, translated by Benjamin Jowett / 1892`
+`quote="Socrates: I know that I have no wisdom, small or great."`
+
+Reproduce: `doxa query "Should I trust my own judgment over the crowd?"`
+
+</details>
+
+<details>
+<summary>Is it rational to fear death?</summary>
+
+The demo grounds Socrates' answer in the belief that a good person need not fear ultimate harm from death.
+
+`source=Apology / Plato, translated by Benjamin Jowett / 1892`
+`quote="Socrates: Wherefore, O judges, be of good cheer about death, and know of a certainty, that no evil can happen to a good man, either in life or after death."`
+
+Reproduce: `doxa query "Is it rational to fear death?"`
+
+</details>
+
+<details>
+<summary>Should a republic eliminate liberty to stop faction?</summary>
+
+Madison complicates the idea: liberty feeds faction, but the retrieved belief says liberty is not a condition a republic can simply extinguish.
+
+`source=Federalist No. 10 / James Madison / 1787`
+`quote="James Madison: Liberty is to faction what air is to fire, an aliment without which it instantly expires."`
+
+`source=Federalist No. 10 / James Madison / 1787`
+`quote="James Madison: The latent causes of faction are thus sown in the nature of man."`
+
+Reproduce: `doxa query "Should a republic eliminate liberty to stop faction?"`
+
+</details>
+
+<details>
+<summary>What is the highest standard for the mind?</summary>
+
+The demo answers through Emerson: the highest retrieved standard is the integrity of one's own mind.
+
+`source=Self-Reliance / Ralph Waldo Emerson / 1841`
+`quote="Ralph Waldo Emerson: Nothing is at last sacred but the integrity of your own mind."`
+
+Reproduce: `doxa query "What is the highest standard for the mind?"`
+
+</details>
+
+<details>
+<summary>What makes a life worth living?</summary>
+
+The demo retrieves Socrates' belief that a worthy life requires examination.
+
+`source=Apology / Plato, translated by Benjamin Jowett / 1892`
+`quote="Socrates: The unexamined life is not worth living."`
+
+Reproduce: `doxa query "What makes a life worth living?"`
+
+</details>
+
+---
 
 ## Why doxa exists
 
@@ -28,7 +147,9 @@ The other difference is the lens. You define what kind of belief you want to
 mine. A strategy lens, legal lens, philosophical lens, and product lens can all
 read the same source and produce different belief bases.
 
-## Architecture
+---
+
+## How it works
 
 ```text
  text / PDF / URL / YouTube / notes
@@ -51,6 +172,8 @@ read the same source and produce different belief bases.
 
 JSONL is the durable source of truth. Postgres/pgvector is optional and can be
 rebuilt from JSONL at any time.
+
+---
 
 ## Install
 
@@ -98,30 +221,9 @@ python -m pip install -e ".[openai,anthropic]"
 | `openai` | `openai` | OpenAI and OpenAI-compatible mining |
 | `anthropic` | `anthropic` | Anthropic mining |
 
-## 60-second quickstart
+---
 
-```bash
-python -m pip install -e .
-doxa demo
-doxa query "self-reliance and conformity" --search keyword --top 2
-```
-
-Example:
-
-```text
-1. Personhood requires resisting social conformity.
-   stance=supports conviction=0.91 score=4.7910
-   source=Self-Reliance / Ralph Waldo Emerson / 1841
-   quote="Ralph Waldo Emerson: Whoso would be a man must be a nonconformist."
-2. Self-trust is a necessary starting point for thought and action.
-   stance=supports conviction=0.93 score=4.7006
-   source=Self-Reliance / Ralph Waldo Emerson / 1841
-   quote="Ralph Waldo Emerson: Trust thyself: every heart vibrates to that iron string."
-```
-
-Keyword search works with no API key, database, embedding model, or network.
-
-## Onboarding
+## Configure
 
 Create a config:
 
@@ -150,6 +252,8 @@ Non-interactive mode is script-friendly and also activates automatically when
 stdin is not a TTY:
 
 ```bash
+doxa init ./doxa.yaml --yes --provider codex-cli
+
 doxa init ./fireworks.yaml \
   --yes \
   --provider openai-compatible \
@@ -159,15 +263,25 @@ doxa init ./fireworks.yaml \
 
 Use `--force` to overwrite an existing config.
 
+---
+
 ## Providers
 
-| Provider | API key? | Install | Notes |
-| --- | --- | --- | --- |
-| `codex-cli` | No | core | Uses your existing Codex CLI auth via `codex exec`. Default for `doxa init`. |
-| `claude-cli` | No | core | Uses your existing Claude Code auth via `claude -p`. |
-| `openai` | Yes | `doxa[openai]` | OpenAI Chat Completions. Default key env: `OPENAI_API_KEY`. |
-| `openai-compatible` | Usually | `doxa[openai]` | Fireworks, vLLM, llama.cpp, or any Chat Completions-compatible server. |
-| `anthropic` | Yes | `doxa[anthropic]` | Anthropic Messages API. Default key env: `ANTHROPIC_API_KEY`. |
+| Provider | Key? | Install | Default auth/config | Best for |
+| --- | --- | --- | --- | --- |
+| `codex-cli` | No | core | existing Codex CLI auth via `codex exec` | local interactive setup |
+| `claude-cli` | No | core | existing Claude Code auth via `claude -p` | local interactive setup |
+| `openai` | Yes | `doxa[openai]` | `OPENAI_API_KEY`, `gpt-4.1-mini` | API mining |
+| `openai-compatible` / `fireworks` | Usually | `doxa[openai]` | `FIREWORKS_API_KEY` for Fireworks examples | custom/open-weight models |
+| `anthropic` | Yes | `doxa[anthropic]` | `ANTHROPIC_API_KEY`, `claude-3-5-sonnet-latest` | API mining |
+
+API providers need their key in the configured environment variable:
+
+```bash
+export OPENAI_API_KEY=...
+export FIREWORKS_API_KEY=...
+export ANTHROPIC_API_KEY=...
+```
 
 Fireworks example:
 
@@ -192,7 +306,14 @@ doxa ingest ./sources/essay.txt
 ```
 
 CLI providers do not need API key variables, but they do require the relevant
-binary on `PATH`.
+binary on `PATH`:
+
+```bash
+command -v codex
+command -v claude
+```
+
+---
 
 ## Ingest sources
 
@@ -262,6 +383,8 @@ sources:
     zone_env: BRIGHTDATA_ZONE
 ```
 
+---
+
 ## Query
 
 Keyword search is the default and has no infrastructure dependency:
@@ -277,6 +400,11 @@ Use JSON output for downstream tools:
 doxa query "examined life" --json
 ```
 
+Only quote what doxa returns. If retrieval returns too little evidence, ingest
+more trusted sources rather than filling the gap yourself.
+
+---
+
 ## Semantic search
 
 Semantic and hybrid retrieval use `fastembed` plus Postgres with pgvector.
@@ -287,10 +415,11 @@ Install extras:
 python -m pip install -e ".[embeddings,postgres]"
 ```
 
-Prepare Postgres and set the DSN:
+Prepare Postgres, enable pgvector, and set the DSN:
 
 ```bash
 export DOXA_POSTGRES_DSN=postgresql://user:password@localhost:5432/doxa
+psql "$DOXA_POSTGRES_DSN" -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
 Build the index from JSONL:
@@ -308,6 +437,8 @@ doxa query "political conflict as a permanent condition" --search hybrid
 
 `hybrid` fuses keyword and semantic rankings. If semantic search is unavailable,
 hybrid reports a warning and falls back to keyword results.
+
+---
 
 ## Faithfulness eval
 
@@ -336,6 +467,8 @@ The eval checks:
 - every quote links to an existing belief
 - every belief has at least one linked quote
 
+---
+
 ## Install as an agent skill
 
 `doxa` ships a portable skill file for agent harnesses. The skill tells the
@@ -354,6 +487,8 @@ Use `--scope project` for harnesses that support project-local skill folders:
 ```bash
 doxa skill install --harness codex --scope project
 ```
+
+---
 
 ## Writing a lens
 
@@ -387,6 +522,8 @@ lens: Extract claims about courage, duty, risk, and practical judgment.
 String lenses use sensible defaults for name, guiding question, stances, and
 tags, and are safe for ingest and prompt construction.
 
+---
+
 ## Schema reference
 
 `Belief`:
@@ -415,6 +552,8 @@ tags, and are safe for ingest and prompt construction.
 
 Stored source records keep the full text so quote faithfulness can be checked
 again later.
+
+---
 
 ## FAQ
 
@@ -445,9 +584,13 @@ source chunks you ingest, so choose providers according to your data policy.
 Yes. The store is line-delimited JSON. Keep quote strings verbatim if you edit
 records by hand, then run `doxa eval`.
 
+---
+
 ## Plato note
 
 `doxa` is Greek for belief, opinion, or what seems to be the case.
+
+---
 
 ## Contributing
 
