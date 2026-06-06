@@ -1,40 +1,25 @@
-<p align="center">
-  <img src="assets/doxa_text.png" alt="DOXA" width="700">
-</p>
+<div align="center">
 
-<p align="center">
-  <img src="assets/cyber_orb.png" alt="DOXA belief oracle" width="170">
-</p>
-
-<p align="center"><b>DOXA // BELIEF ORACLE</b> &nbsp;&middot;&nbsp; <em>quote-first knowledge for agents</em> &nbsp;&middot;&nbsp; <b>NO QUOTE // NO CLAIM</b></p>
-
-The terminal splash, printed by `doxa` (or `doxa banner`):
-
-```text
-+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
-|                                                                              |
-|                            █████████▄   ▄██████▄ ▀████  ▄████   █████▄       |
-|   ⠀⠀⠀⠀⢀⡤⠖⣺⠟⢹⡏⠻⣗⠲⢤⡀⠀⠀⠀⠀     ██████████▄ ██████████ ████▄ ████    ██████       |
-|   ⠀⠀⢠⡞⠉⠀⡼⠁⢀⣸⣇⡀⠈⢧⠀⠉⢳⡄⠀⠀     ████  ▀████ ███▀ ▀████  ████████▀   ▄██████       |
-|   ⠀⡴⠃⠉⠉⢹⠋⠉⠉⢹⡏⠉⠉⠙⡏⠉⠉⠘⢦⠀     ████   ████ ███▄  ████  ▀███████    ████████      |
-|   ⣸⠁⠀⠀⠀⡿⢀⡤⠴⢞⡳⠦⢤⡀⢻⠀⠀⠀⠈⣇     ████   ████ ███   ████   ██████▀    ███ ████      |
-|   ⣏⣀⣀⣀⣀⡟⠉⠀⡞⣩⣍⢳⠀⠉⢻⣀⣀⣀⣀⣹     ████   ████ ███   ████    █████    ████ ████      |
-|   ⣏⠉⠉⠉⠉⡷⣄⠀⢧⣙⣋⡼⠀⣠⢾⠉⠉⠉⠉⣹     ████   ████ ███   ████   ▄█████    ████ ▀████     |
-|   ⢹⡀⠀⠀⠀⣷⠈⠙⠲⢦⡴⠖⠋⠁⣾⠀⠀⠀⢀⡏     ████   ████ ███   ████   ███████  ▄███▄ ▄████     |
-|   ⠀⠳⣄⣀⣀⣸⣄⣀⣀⣸⣇⣀⣀⣠⣇⣀⣀⢠⠞⠀     ████   ████ ███   ████  ████████▄ ███████████▄    |
-|   ⠀⠀⠈⠧⣀⠀⠳⡀⠀⢸⡇⠀⢀⡞⠀⣀⠼⠃⠀⠀     ████  ▄████ ████▄▄████  ████▀████ ████▀▀▀█████    |
-|   ⠀⠀⠀⠀⠈⠑⠲⢽⣦⣸⣇⣴⡯⠴⠚⠁⠀⠀⠀⠀     ███████████ ██████████ ████  ████████▀    ████    |
-|                            █████████▀   ▀██████▀ ▄███▀   ███████     ████    |
-|                                                                              |
-+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
-```
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="assets/orb_light.png">
+  <img alt="doxa" src="assets/orb_dark.png" width="200">
+</picture>
 
 # doxa
 
-Turn the sources you trust into a belief base you can query — where every answer is pinned to a **verbatim quote**, so the model can't make things up.
+**belief oracle** &nbsp;&middot;&nbsp; quote-first knowledge for agents &nbsp;&middot;&nbsp; no quote, no claim
 
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)
+<p>
+  <a href="https://x.com/advait_jayant"><img src="https://img.shields.io/twitter/follow/advait_jayant?style=social" alt="Follow @advait_jayant"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-blue.svg" alt="Python 3.10+">
+</p>
+
+</div>
+
+---
+
+Turn the sources you trust into a belief base you can query — where every answer is pinned to a **verbatim quote**, so the model can't make things up.
 
 Most "chat with your notes" tools let an LLM paraphrase your sources and quietly invent the rest. doxa doesn't. It mines essays, PDFs, web pages, and transcripts into two linked records — a concise **belief** and the **exact quote** that grounds it. You query the beliefs; every answer traces back to real source text. No quote, no claim.
 
