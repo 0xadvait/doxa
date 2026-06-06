@@ -17,7 +17,7 @@ ASSET_ROOT = "_assets"
 
 def resource_ref(*parts: str) -> Traversable:
     ref = resources.files(ASSET_PACKAGE).joinpath(ASSET_ROOT, *parts)
-    if not ref.exists():
+    if not (ref.is_file() or ref.is_dir()):
         joined = "/".join(parts)
         raise DoxaError(f"Bundled resource not found: {joined}")
     return ref

@@ -34,7 +34,7 @@ class AnthropicProvider:
             system=system,
             messages=[{"role": "user", "content": user}],
         )
-        parts = [block.text for block in response.content if getattr(block, "type", "") == "text"]
+        parts = [str(text) for block in response.content if (text := getattr(block, "text", None)) is not None]
         text = "\n".join(parts).strip()
         if not text:
             raise DoxaError("Anthropic provider returned no text content.")

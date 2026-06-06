@@ -48,6 +48,6 @@ def embed_query(query: str, config: dict[str, Any]) -> list[float]:
         try:
             return [vector.tolist() for vector in query_embed([query])][0]
         except Exception:  # noqa: BLE001 - fall back to symmetric embedding
-            pass
+            return [vector.tolist() for vector in model.embed([query])][0]
     return [vector.tolist() for vector in model.embed([query])][0]
 

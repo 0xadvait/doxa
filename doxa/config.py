@@ -37,12 +37,14 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "providers": {
         "codex-cli": {
             "binary": "codex",
-            "flags": ["exec", "--dangerously-bypass-approvals-and-sandbox"],
+            "flags": ["exec"],
             "output_flag": "-o",
+            "timeout": 300,
         },
         "claude-cli": {
             "binary": "claude",
             "flags": ["-p", "{prompt}", "--output-format", "json"],
+            "timeout": 300,
         },
         "openai": {
             "base_url": "",
@@ -65,12 +67,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
         # Override per-ingest with --via.
         "fetcher": "requests",
         "brightdata": {
-            "api_token_env": "BRIGHTDATA_API_TOKEN",
+            "api_token_env": "BRIGHTDATA_API_TOKEN",  # nosec B105
             "zone_env": "BRIGHTDATA_ZONE",
         },
         "jina": {"api_key_env": "JINA_API_KEY"},
         "firecrawl": {"api_key_env": "FIRECRAWL_API_KEY"},
-        # command: { argv: ["my-scraper", "{url}"] }  # or { shell: "..." }; prints text to stdout
+        # command: { argv: ["my-scraper", "{url}"] }  # shell requires allow_shell: true and is discouraged
     },
     "retrieval": {
         "default_search": "keyword",
@@ -223,6 +225,7 @@ def load_yaml(path: Path) -> dict[str, Any]:
 def load_config(path: str | Path | None = None, *, allow_demo_default: bool = True) -> dict[str, Any]:
     """Load config, falling back to bundled demo data when no config exists."""
 
+    config_path: Path | None
     if path:
         config_path = Path(path).expanduser().resolve()
         if not config_path.exists():

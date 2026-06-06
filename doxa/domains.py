@@ -6,7 +6,7 @@ from copy import deepcopy
 import os
 from pathlib import Path
 import re
-import subprocess
+import subprocess  # nosec B404
 import tempfile
 from typing import Any, Callable
 
@@ -434,7 +434,7 @@ def edit_domain_weights(path: str | Path | None) -> Path:
         handle.flush()
         temp_path = Path(handle.name)
     try:
-        proc = subprocess.run([editor, str(temp_path)], check=False)
+        proc = subprocess.run([editor, str(temp_path)], check=False)  # nosec B603 - explicit user editor from VISUAL/EDITOR.
         if proc.returncode != 0:
             raise DoxaError(f"Editor exited with status {proc.returncode}.")
         edited = load_yaml(temp_path)

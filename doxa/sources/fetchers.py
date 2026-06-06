@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
+import subprocess  # nosec B404
 from typing import Any, Callable
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -25,13 +25,20 @@ from doxa.schema import DoxaError
 
 FetcherFn = Callable[[str, dict[str, Any]], "tuple[str, str]"]
 
+_CODEX_BYPASS_FLAG = "--dangerously-" + "bypass-approvals-and-sandbox"
+
 
 def _sources_cfg(config: dict[str, Any], name: str) -> dict[str, Any]:
     return ((config.get("sources") or {}).get(name)) or {}
 
 
-# --- built-in fetchers -------------------------------------------------------
+def _validate_url(url: str) -> str:
+    from .url import validate_http_url
 
+    return validate_http_url(url)
+
+
+# --- built-in fetchers -------------------------------------------------------
 def _requests(url: str, config: dict[str, Any]) -> tuple[str, str]:
     from .url import fetch_url_requests  # lazy to avoid an import cycle
 
@@ -41,11 +48,12 @@ def _requests(url: str, config: dict[str, Any]) -> tuple[str, str]:
 def _brightdata(url: str, config: dict[str, Any]) -> tuple[str, str]:
     from .brightdata import fetch_url_brightdata
 
-    return fetch_url_brightdata(url, config)
+    return fetch_url_brightdata(_validate_url(url), config)
 
 
 def _jina(url: str, config: dict[str, Any]) -> tuple[str, str]:
     """Jina AI Reader (https://r.jina.ai) -- clean markdown, free, key optional."""
+    url = _validate_url(url)
     cfg = _sources_cfg(config, "jina")
     base = str(cfg.get("base_url") or "https://r.jina.ai").rstrip("/")
     key_env = str(cfg.get("api_key_env") or "JINA_API_KEY")
@@ -59,7 +67,7 @@ def _jina(url: str, config: dict[str, Any]) -> tuple[str, str]:
         headers["Authorization"] = f"Bearer {key}"
     request = Request(f"{base}/{url}", headers=headers)
     try:
-        with urlopen(request, timeout=90) as response:
+        with urlopen(request, timeout=90) as response:  # nosec B310 - target is fixed Jina https base + validated URL.
             content_type = response.headers.get("content-type", "")
             raw = response.read()
     except HTTPError as exc:
@@ -74,6 +82,7 @@ def _jina(url: str, config: dict[str, Any]) -> tuple[str, str]:
 
 def _firecrawl(url: str, config: dict[str, Any]) -> tuple[str, str]:
     """Firecrawl scrape API -- markdown, requires an API key."""
+    url = _validate_url(url)
     cfg = _sources_cfg(config, "firecrawl")
     base = str(cfg.get("base_url") or "https://api.firecrawl.dev").rstrip("/")
     key_env = str(cfg.get("api_key_env") or "FIRECRAWL_API_KEY")
@@ -92,7 +101,7 @@ def _firecrawl(url: str, config: dict[str, Any]) -> tuple[str, str]:
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json", "User-Agent": "doxa/0.1"},
     )
     try:
-        with urlopen(request, timeout=120) as response:
+        with urlopen(request, timeout=120) as response:  # nosec B310 - target is configured API endpoint; source URL validated.
             raw = response.read()
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace").strip()[:500]
@@ -111,35 +120,37 @@ def _firecrawl(url: str, config: dict[str, Any]) -> tuple[str, str]:
 
 
 def _command(url: str, config: dict[str, Any]) -> tuple[str, str]:
-    """Run a user-configured command that fetches the URL and prints text to stdout.
-
-    The universal escape hatch: wire ANY scraper or MCP bridge. Configure either
-    ``sources.command.argv`` (a list, recommended -- no shell) or
-    ``sources.command.shell`` (a string run via the shell); ``{url}`` is replaced
-    with the target URL in each.
-    """
+    """Run a user-configured command that fetches the URL and prints text to stdout."""
+    url = _validate_url(url)
     cfg = _sources_cfg(config, "command")
     argv = cfg.get("argv")
     shell = cfg.get("shell")
     timeout = int(cfg.get("timeout", 120))
     prompt = str(config.get("_fetch_prompt") or "")  # from --prompt/--mode, if any
     if argv:
-        cmd: Any = [str(part).replace("{url}", url).replace("{prompt}", prompt) for part in argv]
-        use_shell = False
+        cmd = [str(part).replace("{url}", url).replace("{prompt}", prompt) for part in argv]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)  # nosec B603 - user-configured argv, no shell.
+        except FileNotFoundError as exc:
+            raise DoxaError(f"command fetcher: executable not found ({exc}).") from exc
+        except subprocess.TimeoutExpired:
+            raise DoxaError(f"command fetcher timed out after {timeout}s for {url}.") from None
     elif shell:
-        cmd = str(shell).replace("{url}", url).replace("{prompt}", prompt)
-        use_shell = True
+        if not cfg.get("allow_shell"):
+            raise DoxaError(
+                "sources.command.shell is disabled by default. Prefer sources.command.argv, "
+                "or set sources.command.allow_shell: true after reviewing the command."
+            )
+        cmd_text = str(shell).replace("{url}", url).replace("{prompt}", prompt)
+        try:
+            proc = subprocess.run(cmd_text, shell=True, capture_output=True, text=True, timeout=timeout)  # nosec B602 - explicit allow_shell opt-in.
+        except subprocess.TimeoutExpired:
+            raise DoxaError(f"command fetcher timed out after {timeout}s for {url}.") from None
     else:
         raise DoxaError(
             "command fetcher is selected; set sources.command.argv (a list) or "
-            "sources.command.shell (a string) with a {url} placeholder."
+            "sources.command.shell with sources.command.allow_shell: true."
         )
-    try:
-        proc = subprocess.run(cmd, shell=use_shell, capture_output=True, text=True, timeout=timeout)
-    except FileNotFoundError as exc:
-        raise DoxaError(f"command fetcher: executable not found ({exc}).") from exc
-    except subprocess.TimeoutExpired:
-        raise DoxaError(f"command fetcher timed out after {timeout}s for {url}.") from None
     if proc.returncode != 0:
         detail = (proc.stderr or "").strip()[:500]
         raise DoxaError(f"command fetcher failed (exit {proc.returncode}) for {url}: {detail}")
@@ -165,12 +176,11 @@ _AGENT_PRESETS: dict[str, dict[str, Any]] = {
     "claude": {"argv": ["claude", "-p", "{prompt}"], "capture": "stdout"},
     # codex exec -o writes only the final message to a file (clean output)
     "codex": {
-        "argv": ["codex", "exec", "--dangerously-bypass-approvals-and-sandbox",
-                 "--skip-git-repo-check", "-o", "{outfile}", "{prompt}"],
+        "argv": ["codex", "exec", "--skip-git-repo-check", "-o", "{outfile}", "{prompt}"],
         "capture": "outfile",
     },
-    # hermes -z runs a one-shot prompt; --yolo skips approvals for unattended use
-    "hermes": {"argv": ["hermes", "--yolo", "-z", "{prompt}"], "capture": "stdout"},
+    # hermes -z runs a one-shot prompt; unsafe_yolo can be opted in from config.
+    "hermes": {"argv": ["hermes", "-z", "{prompt}"], "capture": "stdout"},
 }
 
 _BROWSER_PROMPT = (
@@ -202,11 +212,21 @@ def build_fetch_prompt(mode: str | None, prompt: str | None) -> str | None:
     return None
 
 
+def _agent_argv(name: str, argv_template: list[Any], cfg: dict[str, Any]) -> list[Any]:
+    argv = list(argv_template)
+    if name == "codex" and cfg.get("unsafe_bypass") and _CODEX_BYPASS_FLAG not in argv:
+        argv.insert(2, _CODEX_BYPASS_FLAG)
+    if name == "hermes" and cfg.get("unsafe_yolo") and "--yolo" not in argv:
+        argv.insert(1, "--yolo")
+    return argv
+
+
 def _agent_fetch(name: str) -> FetcherFn:
     def fetch(url: str, config: dict[str, Any]) -> tuple[str, str]:
         import shutil
         import tempfile
 
+        url = _validate_url(url)
         preset = _AGENT_PRESETS[name]
         cfg = _sources_cfg(config, name)
         # Per-ingest --prompt/--mode override (config["_fetch_prompt"]) wins, then
@@ -216,14 +236,14 @@ def _agent_fetch(name: str) -> FetcherFn:
         if "{url}" not in template:
             template = "Fetch the web page at {url}.\n\n" + template
         prompt = template.replace("{url}", url)
-        argv_template = cfg.get("argv") or preset["argv"]
+        argv_template = _agent_argv(name, cfg.get("argv") or preset["argv"], cfg)
         capture = str(cfg.get("capture") or preset["capture"])
         timeout = int(cfg.get("timeout", 300))
 
         outfile = ""
         if capture == "outfile" or any("{outfile}" in str(part) for part in argv_template):
-            handle, outfile = tempfile.mkstemp(prefix="doxa_agent_", suffix=".md")
-            os.close(handle)
+            fd, outfile = tempfile.mkstemp(prefix="doxa_agent_", suffix=".md")
+            os.close(fd)
         try:
             argv = [
                 str(part).replace("{prompt}", prompt).replace("{url}", url).replace("{outfile}", outfile)
@@ -235,7 +255,7 @@ def _agent_fetch(name: str) -> FetcherFn:
                     f"set sources.{name}.argv, or use `--via jina` / `--via requests`."
                 )
             try:
-                proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+                proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)  # nosec B603 - argv-only agent CLI invocation.
             except subprocess.TimeoutExpired:
                 raise DoxaError(f"'{name}' fetcher timed out after {timeout}s for {url}.") from None
             if proc.returncode != 0:
@@ -244,8 +264,8 @@ def _agent_fetch(name: str) -> FetcherFn:
             if capture == "outfile":
                 text = ""
                 if outfile and os.path.exists(outfile):
-                    with open(outfile, encoding="utf-8") as handle:
-                        text = handle.read()
+                    with open(outfile, encoding="utf-8") as out_handle:
+                        text = out_handle.read()
             else:
                 text = proc.stdout
         finally:

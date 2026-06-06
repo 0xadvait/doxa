@@ -6,6 +6,7 @@ import re
 import uuid
 from html.parser import HTMLParser
 from typing import Any
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from doxa.schema import DoxaError, SourceRecord, normalize_ws
@@ -43,10 +44,20 @@ class _TextExtractor(HTMLParser):
         self.parts.append(data)
 
 
+def validate_http_url(url: str) -> str:
+    """Return url when it is an http(s) URL, otherwise raise a friendly error."""
+
+    parsed = urlparse(url)
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
+        raise DoxaError(f"Only http(s) URLs are supported for URL ingestion: {url}")
+    return url
+
+
 def fetch_url_requests(url: str) -> tuple[str, str]:
+    url = validate_http_url(url)
     request = Request(url, headers={"User-Agent": "doxa/0.1"})
     try:
-        with urlopen(request, timeout=30) as response:
+        with urlopen(request, timeout=30) as response:  # nosec B310 - validate_http_url restricts schemes.
             content_type = response.headers.get("content-type", "")
             raw = response.read()
     except OSError as exc:
@@ -86,6 +97,7 @@ def load_url(
 ) -> SourceRecord:
     from .fetchers import get_fetcher
 
+    url = validate_http_url(url)
     effective = dict(config or {})
     if fetch_prompt:
         effective["_fetch_prompt"] = fetch_prompt

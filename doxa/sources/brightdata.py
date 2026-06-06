@@ -10,6 +10,8 @@ from urllib.request import Request, urlopen
 
 from doxa.schema import DoxaError
 
+from .url import validate_http_url
+
 
 BRIGHTDATA_ENDPOINT = "https://api.brightdata.com/request"
 
@@ -44,6 +46,7 @@ def _decode_error(exc: HTTPError) -> str:
 def fetch_url_brightdata(url: str, config: dict[str, Any]) -> tuple[str, str]:
     """Fetch a URL through BrightData Web Unlocker and return page text."""
 
+    url = validate_http_url(url)
     token_env = _config_value(config, "api_token_env", "BRIGHTDATA_API_TOKEN")
     zone_env = _config_value(config, "zone_env", "BRIGHTDATA_ZONE")
     token = os.environ.get(token_env)
@@ -79,7 +82,7 @@ def fetch_url_brightdata(url: str, config: dict[str, Any]) -> tuple[str, str]:
         },
     )
     try:
-        with urlopen(request, timeout=90) as response:
+        with urlopen(request, timeout=90) as response:  # nosec B310 - fixed BrightData endpoint; target URL validated.
             content_type = response.headers.get("content-type", "")
             raw = response.read()
     except HTTPError as exc:
