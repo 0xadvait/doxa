@@ -1,0 +1,31 @@
+{
+  "packs": [
+    {
+      "name": "startup-wisdom",
+      "summary": "Founder, product, and growth beliefs distilled from Lenny's Podcast, Stanford's View From The Top, Paul Graham's essays, and Y Combinator -- each pinned to a verbatim quote and a link to its source.",
+      "lens": "founder-strategy",
+      "license": "Beliefs (the distilled stances) are CC-BY-4.0 by doxa contributors. Quotes are short verbatim excerpts of their sources, included for citation/commentary with attribution and a link to the original; full source text is not redistributed.",
+      "url": "https://github.com/0xadvait/doxa/releases/download/startup-wisdom-v1",
+      "beliefs": 13957,
+      "quotes": 13160,
+      "sources": [
+        {
+          "title": "Lenny's Podcast",
+          "url": "https://www.lennyspodcast.com/"
+        },
+        {
+          "title": "View From The Top -- Stanford GSB",
+          "url": "https://www.gsb.stanford.edu/experience/learning/leadership/view-from-the-top"
+        },
+        {
+          "title": "Paul Graham essays",
+          "url": "https://www.paulgraham.com/articles.html"
+        },
+        {
+          "title": "Y Combinator -- Startup School + talks",
+          "url": "https://www.ycombinator.com/library"
+        }
+      ]
+    }
+  ]
+}

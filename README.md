@@ -42,6 +42,7 @@ python -m pip install -e .
 doxa                  # banner + a quick-start landing
 doxa guide            # full walkthrough, any time
 doxa demo             # try it on bundled public-domain data
+doxa packs install startup-wisdom   # optional: a ready-made founder/product/growth base
 doxa query "self-reliance and conformity" --top 2
 ```
 
@@ -175,6 +176,39 @@ little fluency for a guarantee you can audit.
 The other difference is the lens. You define what kind of belief you want to
 mine. A strategy lens, legal lens, philosophical lens, and product lens can all
 read the same source and produce different belief bases.
+
+---
+
+## doxa vs. a RAG app
+
+Under the hood, doxa *is* RAG plumbing -- BM25 + pgvector hybrid over an embedded
+store. The difference is what sits in the index and what happens around it.
+
+A normal RAG app indexes raw document chunks: you ask, it pulls the most similar
+passages, the model summarizes them. The retrieval unit is a slice of someone's
+document.
+
+doxa's index isn't raw text. It's authored **beliefs** -- each a distilled stance
+mined offline from the source, carrying its reasoning, stance, and conviction, with
+the **verbatim quotes that generated it** attached and grep-checked against the
+original. The retrieval unit is a distilled opinion plus its receipts, not a
+transcript fragment. That distillation step is the part a RAG app skips.
+
+Three things follow that a vanilla RAG app doesn't have:
+
+- **Typed honesty.** Every belief carries how much to trust it (a conviction, and
+  room for an epistemic status). doxa refuses to emit a fake "87% true" number -- it
+  tells you which claims are load-bearing and which are vibes.
+- **Attribution, not adjudication.** The quote is the *stored object*, linked and
+  verbatim ("X literally said this"). It never manufactures a citation -- the failure
+  mode RAG hits when it cites a chunk that doesn't support the generated sentence.
+- **A point of view, not a corpus dump.** Every belief lives in one lens, so retrieval
+  returns a worldview. RAG answers "what do the documents say about X"; doxa answers
+  "what's the position on X, and here's who said the thing it's built on."
+
+The honest one-liner: doxa is RAG plumbing wrapped around a curated belief-and-quote
+graph with typed epistemic honesty, queried as a point of view rather than a document
+search. The retriever was never the moat; the data model and the discipline on top are.
 
 ---
 
