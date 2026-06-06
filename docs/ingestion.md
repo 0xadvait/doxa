@@ -24,6 +24,8 @@ doxa is not tied to one scraper. The URL fetcher is chosen per ingest with
 - `firecrawl` -- Firecrawl scrape API (`FIRECRAWL_API_KEY`).
 - `brightdata` -- BrightData Web Unlocker (`BRIGHTDATA_API_TOKEN` + `BRIGHTDATA_ZONE`).
 - `command` -- run any external tool or MCP bridge that prints text to stdout.
+- `claude` / `codex` / `hermes` -- delegate the fetch to a coding agent's browsing
+  (returns markdown; needs that CLI on PATH; invocation overridable under `sources.<agent>`).
 
 ```bash
 doxa ingest https://target.example --via jina

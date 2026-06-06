@@ -94,3 +94,31 @@ def test_command_fetcher_reports_nonzero_exit() -> None:
     with pytest.raises(DoxaError) as exc:
         get_fetcher("command")("https://x", config)
     assert "exit 3" in str(exc.value)
+
+
+def test_registry_includes_agent_fetchers() -> None:
+    for name in ("claude", "codex", "hermes"):
+        assert name in available_fetchers()
+
+
+def test_agent_fetcher_stdout_capture(tmp_path) -> None:
+    # claude preset captures stdout; override argv with a fake agent that prints markdown
+    config = {"sources": {"claude": {"argv": ["python3", "-c", "import sys;print('# Agent\\n\\nfetched '+sys.argv[1])", "{url}"]}}}
+    rec = load_url("https://example.com/p", fetcher="claude", config=config)
+    assert rec.title == "Agent"
+    assert "fetched https://example.com/p" in rec.text
+
+
+def test_agent_fetcher_outfile_capture(tmp_path) -> None:
+    # codex preset captures from {outfile}; fake agent writes markdown there
+    config = {"sources": {"codex": {"argv": ["python3", "-c", "import sys;open(sys.argv[1],'w').write('# Codex\\n\\nfrom file')", "{outfile}"]}}}
+    rec = load_url("https://example.com/q", fetcher="codex", config=config)
+    assert rec.title == "Codex"
+    assert "from file" in rec.text
+
+
+def test_agent_fetcher_missing_binary_is_friendly() -> None:
+    config = {"sources": {"hermes": {"argv": ["doxa_missing_agent_zzz", "{url}"]}}}
+    with pytest.raises(DoxaError) as exc:
+        get_fetcher("hermes")("https://x", config)
+    assert "on PATH" in str(exc.value)

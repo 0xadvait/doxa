@@ -416,11 +416,13 @@ per ingest with `--via`, or set `sources.fetcher` as the default.
 | `firecrawl` | Yes | [Firecrawl](https://firecrawl.dev) scrape API; needs `FIRECRAWL_API_KEY`. |
 | `brightdata` | Yes | BrightData Web Unlocker; needs `BRIGHTDATA_API_TOKEN` + `BRIGHTDATA_ZONE`. |
 | `command` | -- | Run ANY tool or MCP bridge that prints text to stdout. |
+| `claude` / `codex` / `hermes` | -- | Let a coding agent browse and return clean markdown -- good for JS-heavy or bot-walled pages. |
 
 ```bash
 doxa ingest https://target.example --via jina          # free, clean markdown
 doxa ingest https://target.example --via firecrawl     # FIRECRAWL_API_KEY
 doxa ingest https://target.example --via brightdata    # BRIGHTDATA_API_TOKEN + _ZONE
+doxa ingest https://target.example --via claude        # an agent browses for you (or codex / hermes)
 ```
 
 Set a default and per-fetcher options in `doxa.yaml`:
@@ -442,6 +444,21 @@ sources:
   fetcher: command
   command:
     argv: ["my-fetch", "{url}"]   # your script prints markdown/text to stdout
+```
+
+**Let a coding agent do the scraping.** `claude`, `codex`, and `hermes` delegate
+the fetch to that CLI's browsing and ingest the markdown it returns -- handy for
+pages plain HTTP can't read. Each needs its CLI on PATH and web access; the
+invocation, prompt, and timeout are overridable under `sources.<agent>`:
+
+```bash
+doxa ingest https://target.example --via claude   # or --via codex / --via hermes
+```
+
+```yaml
+sources:
+  fetcher: codex
+  codex: { timeout: 300 }        # argv/prompt also overridable, e.g. sources.codex.argv
 ```
 
 **MCP-equipped agents** can also skip fetchers and pipe pre-fetched markdown in:
