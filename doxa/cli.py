@@ -423,7 +423,7 @@ def cmd_skill_install(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="doxa", description="Build and query a verbatim-grounded belief base.")
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command", required=False)
 
     init = subparsers.add_parser("init", help="Create a documented doxa.yaml config.")
     init.add_argument("path", nargs="?", default="doxa.yaml")
@@ -531,6 +531,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if getattr(args, "func", None) is None:
+        # No subcommand: greet with the banner, then show usage.
+        sys.stdout.write(render_banner(color="auto", stream=sys.stdout))
+        sys.stdout.write("\n")
+        parser.print_help()
+        return 0
     try:
         return int(args.func(args))
     except DoxaError as exc:

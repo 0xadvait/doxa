@@ -23,7 +23,15 @@ def test_bundled_banner_resource_is_loadable() -> None:
     text = banner_text()
     lines = text.splitlines()
 
-    assert "DOXA // BELIEF ORACLE" in text
-    assert "NO QUOTE // NO CLAIM" in text
+    assert lines, "banner is empty"
+    # framed, with a consistent width on every row
+    assert lines[0].startswith("+") and lines[0].endswith("+")
+    assert len({len(line) for line in lines}) == 1, "ragged banner width"
     assert all(len(line) < 100 for line in lines)
+    # the lockup carries both elements: the braille orb and the block wordmark
+    assert any(0x2800 <= ord(ch) <= 0x28FF for ch in text), "missing braille orb"
+    assert any(ch in "█▀▄" for ch in text), "missing block wordmark"
+    # trimmed to just DOXA + mascot -- the old tagline/poem are gone
+    assert "DOXA // BELIEF ORACLE" not in text
+    assert "NO QUOTE // NO CLAIM" not in text
 
