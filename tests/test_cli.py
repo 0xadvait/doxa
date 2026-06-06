@@ -188,3 +188,60 @@ def test_domains_set_accepts_config_before_subcommand(tmp_path) -> None:
     assert code == 0
     config = load_config(config_path, allow_demo_default=False)
     assert domain_weights(config)["technical"] == 8
+
+
+def test_bare_invocation_shows_human_landing(capsys) -> None:
+    code = main([])
+    out = capsys.readouterr().out
+    assert code == 0
+    # banner + curated "start here", not a raw argparse dump
+    assert "doxa demo" in out
+    assert "doxa init" in out
+    assert "skill install" in out
+
+
+def test_guide_command_prints_walkthrough(capsys) -> None:
+    code = main(["guide"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "no quote, no claim" in out
+    assert "THE LOOP" in out
+
+
+def test_status_reports_counts_for_a_config(capsys, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "doxa.yaml").write_text("project:\n  name: t\n", encoding="utf-8")
+    code = main(["status"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "config:" in out
+    assert "beliefs:   0" in out
+
+
+def test_missing_config_is_friendly_not_a_traceback(capsys, tmp_path) -> None:
+    code = main(["query", "x", "--config", str(tmp_path / "none.yaml")])
+    cap = capsys.readouterr()
+    assert code == 2
+    assert "Config not found" in cap.err
+    assert "hint:" in cap.err
+    assert "Traceback" not in cap.err
+    assert cap.out == ""
+
+
+def test_query_demo_notice_is_on_stderr_only(capsys, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)  # no doxa.yaml here -> demo fallback
+    code = main(["query", "self-reliance"])
+    cap = capsys.readouterr()
+    assert code == 0
+    assert "note:" in cap.err          # the "using demo" notice
+    assert "note:" not in cap.out      # stdout stays clean for piping/agents
+    assert "Emerson" in cap.out        # real demo result still printed
+
+
+def test_query_json_has_no_human_notices(capsys, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    code = main(["query", "self-reliance", "--json"])
+    cap = capsys.readouterr()
+    assert code == 0
+    assert "note:" not in cap.out and "note:" not in cap.err
+    json.loads(cap.out)  # pure, parseable JSON

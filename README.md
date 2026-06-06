@@ -39,10 +39,15 @@ Most "chat with your notes" tools let an LLM paraphrase your sources and quietly
 
 ```bash
 python -m pip install -e .
-doxa banner --color auto
-doxa demo
-doxa query "self-reliance and conformity" --search keyword --top 2
+doxa                  # banner + a quick-start landing
+doxa guide            # full walkthrough, any time
+doxa demo             # try it on bundled public-domain data
+doxa query "self-reliance and conformity" --top 2
 ```
+
+New to the CLI? Just run `doxa` (or `doxa guide`). `doxa status` shows where
+things stand -- your config, data location, and belief/quote counts. Every
+command takes `-h` for its options.
 
 `doxa banner` defaults to `--color auto`: ANSI accents appear in an interactive
 terminal, while pipes, captures, and test runs stay plain. Use `--color always`

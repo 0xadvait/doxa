@@ -215,7 +215,12 @@ def load_yaml(path: Path) -> dict[str, Any]:
 def load_config(path: str | Path | None = None, *, allow_demo_default: bool = True) -> dict[str, Any]:
     """Load config, falling back to bundled demo data when no config exists."""
 
-    config_path = Path(path).expanduser().resolve() if path else find_config_path()
+    if path:
+        config_path = Path(path).expanduser().resolve()
+        if not config_path.exists():
+            raise DoxaError(f"Config not found: {config_path}")
+    else:
+        config_path = find_config_path()
     config = deepcopy(DEFAULT_CONFIG)
     if config_path:
         config = deep_merge(config, load_yaml(config_path))
