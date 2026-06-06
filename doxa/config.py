@@ -61,7 +61,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "sources": {
         # URL fetcher: requests (plain HTTP), jina (free reader), firecrawl, brightdata,
-        # or command (run any tool/MCP bridge). Override per-ingest with --via.
+        # command (any tool/MCP bridge), or a browsing agent: claude / codex / hermes.
+        # Override per-ingest with --via.
         "fetcher": "requests",
         "brightdata": {
             "api_token_env": "BRIGHTDATA_API_TOKEN",

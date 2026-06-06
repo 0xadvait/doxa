@@ -662,7 +662,7 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument(
         "--via",
         choices=available_fetchers(),
-        help="Override the URL fetcher for this ingest (requests, jina, firecrawl, brightdata, command).",
+        help="Override the URL fetcher (requests, jina, firecrawl, brightdata, command, or a browsing agent: claude/codex/hermes).",
     )
     ingest.set_defaults(func=cmd_ingest)
 

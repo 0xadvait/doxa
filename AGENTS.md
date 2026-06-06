@@ -129,7 +129,9 @@ Review or undo what's been ingested with `doxa sources list` and
 
 The URL fetcher is pluggable (`--via`, or `sources.fetcher` default):
 `requests` (default), `jina` (free clean markdown), `firecrawl` (`FIRECRAWL_API_KEY`),
-`brightdata` (`BRIGHTDATA_API_TOKEN` + `BRIGHTDATA_ZONE`), or `command` (run any tool).
+`brightdata` (`BRIGHTDATA_API_TOKEN` + `BRIGHTDATA_ZONE`), `command` (run any tool),
+or a browsing agent -- `claude` / `codex` / `hermes` -- which fetches the page with
+its own web tools and returns markdown (needs that CLI on PATH).
 
 ```bash
 doxa ingest https://target.example --via jina        # free, good first try for bot-walled pages

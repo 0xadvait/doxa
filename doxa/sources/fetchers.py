@@ -147,12 +147,91 @@ def _command(url: str, config: dict[str, Any]) -> tuple[str, str]:
     return proc.stdout, str(cfg.get("content_type") or "text/markdown")
 
 
+# --- agent fetchers: delegate the fetch to a coding agent's browsing ----------
+# A coding agent (Claude Code, Codex, Hermes) can fetch JS-heavy or bot-walled
+# pages with its own browser/web tools and return clean markdown. These presets
+# are thin wrappers over the same subprocess machinery as `command`, with the
+# right per-CLI invocation; everything (argv, prompt, timeout) is overridable
+# under sources.<name>.
+
+_SCRAPE_PROMPT = (
+    "Fetch the web page at {url} and output ONLY its main readable content as clean "
+    "Markdown. No commentary, no preamble, no code fences, no tool logs -- just the content."
+)
+
+_AGENT_PRESETS: dict[str, dict[str, Any]] = {
+    # claude -p prints the response text to stdout
+    "claude": {"argv": ["claude", "-p", "{prompt}"], "capture": "stdout"},
+    # codex exec -o writes only the final message to a file (clean output)
+    "codex": {
+        "argv": ["codex", "exec", "--dangerously-bypass-approvals-and-sandbox",
+                 "--skip-git-repo-check", "-o", "{outfile}", "{prompt}"],
+        "capture": "outfile",
+    },
+    # hermes -z runs a one-shot prompt; --yolo skips approvals for unattended use
+    "hermes": {"argv": ["hermes", "--yolo", "-z", "{prompt}"], "capture": "stdout"},
+}
+
+
+def _agent_fetch(name: str) -> FetcherFn:
+    def fetch(url: str, config: dict[str, Any]) -> tuple[str, str]:
+        import shutil
+        import tempfile
+
+        preset = _AGENT_PRESETS[name]
+        cfg = _sources_cfg(config, name)
+        prompt = str(cfg.get("prompt") or _SCRAPE_PROMPT).replace("{url}", url)
+        argv_template = cfg.get("argv") or preset["argv"]
+        capture = str(cfg.get("capture") or preset["capture"])
+        timeout = int(cfg.get("timeout", 300))
+
+        outfile = ""
+        if capture == "outfile" or any("{outfile}" in str(part) for part in argv_template):
+            handle, outfile = tempfile.mkstemp(prefix="doxa_agent_", suffix=".md")
+            os.close(handle)
+        try:
+            argv = [
+                str(part).replace("{prompt}", prompt).replace("{url}", url).replace("{outfile}", outfile)
+                for part in argv_template
+            ]
+            if shutil.which(argv[0]) is None:
+                raise DoxaError(
+                    f"'{name}' fetcher needs the '{argv[0]}' CLI on PATH. Install it, "
+                    f"set sources.{name}.argv, or use `--via jina` / `--via requests`."
+                )
+            try:
+                proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+            except subprocess.TimeoutExpired:
+                raise DoxaError(f"'{name}' fetcher timed out after {timeout}s for {url}.") from None
+            if proc.returncode != 0:
+                detail = (proc.stderr or "").strip()[:500]
+                raise DoxaError(f"'{name}' fetcher failed (exit {proc.returncode}) for {url}: {detail}")
+            if capture == "outfile":
+                text = ""
+                if outfile and os.path.exists(outfile):
+                    with open(outfile, encoding="utf-8") as handle:
+                        text = handle.read()
+            else:
+                text = proc.stdout
+        finally:
+            if outfile and os.path.exists(outfile):
+                os.unlink(outfile)
+        if not text.strip():
+            raise DoxaError(f"'{name}' fetcher returned no output for {url}.")
+        return text, str(cfg.get("content_type") or "text/markdown")
+
+    return fetch
+
+
 _FETCHERS: dict[str, FetcherFn] = {
     "requests": _requests,
     "brightdata": _brightdata,
     "jina": _jina,
     "firecrawl": _firecrawl,
     "command": _command,
+    "claude": _agent_fetch("claude"),
+    "codex": _agent_fetch("codex"),
+    "hermes": _agent_fetch("hermes"),
 }
 
 
