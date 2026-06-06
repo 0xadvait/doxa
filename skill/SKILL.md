@@ -56,15 +56,20 @@ attribution, source, or belief the CLI did not return.
 
 ## 3. Start or grow a base
 
-### Fastest start: install a curated pack
+### Fastest start: offer a curated pack (optional)
 
-If the user wants value immediately, install a starter pack instead of building
-from scratch (`doxa packs install` creates a base if there isn't one):
+If the user wants value immediately, offer a ready-made starter pack instead of
+building from scratch. It's optional -- ask first, and skip it if they'd rather
+curate their own base. `doxa packs install` creates a base if there isn't one:
 
 ```bash
-doxa packs list                       # curated, ready-made bases
-doxa packs install startup-wisdom     # ~14k founder/product/growth beliefs + quotes
+doxa packs list                       # the available curated bases
+doxa packs install startup-wisdom     # OPTIONAL: ~14k founder/product/growth beliefs +
+                                      # quotes from Lenny's Podcast, View From The Top,
+                                      # Paul Graham, and Y Combinator (each with a source link)
 ```
+
+Prefer the user's own sources? Skip the pack and use the lens + ingest flow below.
 
 ### Pick a lens first (don't make the user invent one)
 

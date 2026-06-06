@@ -92,3 +92,33 @@ doxa domains export
 ```
 
 All domain subcommands accept `--config`.
+
+## Install extras
+
+Core install (`pip install -e .`) ships only `PyYAML` and covers config, demo,
+keyword query, eval, and text/URL ingestion. Add extras as needed:
+
+```bash
+python -m pip install -e ".[all]"                 # every integration
+python -m pip install -e ".[embeddings,postgres]" # semantic + hybrid search
+python -m pip install -e ".[pdf,youtube]"         # PDF + YouTube ingestion
+python -m pip install -e ".[openai,anthropic]"    # API mining providers
+python -m pip install -r requirements.txt         # or pin via requirements file
+```
+
+| Extra | Adds | Used by |
+| --- | --- | --- |
+| core | `PyYAML` | config, demo, keyword query, eval |
+| `embeddings` | `fastembed` | semantic vectors |
+| `postgres` | `psycopg2-binary`, `pgvector` | pgvector indexing/search |
+| `pdf` | `PyMuPDF` | PDF ingestion |
+| `youtube` | `yt-dlp` | YouTube transcript ingestion |
+| `openai` | `openai` | OpenAI and OpenAI-compatible mining |
+| `anthropic` | `anthropic` | Anthropic mining |
+
+Dev/test setup:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+```

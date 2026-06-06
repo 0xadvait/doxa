@@ -126,6 +126,20 @@ If none fit, write a custom lens with three fields:
 - `description`: what kind of beliefs to extract.
 - `question`: the guiding question doxa should ask of each source.
 
+## Offer a starter pack (optional)
+
+Before building from scratch, offer a ready-made base -- the fastest path to value,
+and entirely optional:
+
+```bash
+doxa packs list                     # the available curated bases
+doxa packs install startup-wisdom   # ~14k founder/product/growth beliefs + quotes from
+                                    # Lenny's Podcast, View From The Top, Paul Graham, YC
+```
+
+`doxa packs install` creates a base if there isn't one. Ask before installing, and
+skip it if the user would rather curate their own sources (the First Source flow below).
+
 ## First Source
 
 Ask the user for the first trusted source, then ingest it:

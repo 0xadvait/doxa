@@ -73,6 +73,11 @@ Example:
 
 Keyword search works with no API key, database, embedding model, or network.
 
+> **Want value instantly?** `doxa packs install startup-wisdom` installs an optional,
+> ready-mined base of ~14k founder/product/growth beliefs from Lenny's Podcast, View
+> From The Top, Paul Graham, and Y Combinator -- each pinned to a verbatim quote +
+> source link. Browse packs with `doxa packs list`.
+
 ---
 
 ## Docs
@@ -81,80 +86,20 @@ Keyword search works with no API key, database, embedding model, or network.
 - [Retrieval](docs/retrieval.md) · [Writing a lens](docs/writing-a-lens.md) · [Schema](docs/schema.md) · [Architecture](docs/architecture.md)
 - [Agent skill](docs/skill.md) · [AGENTS.md](AGENTS.md) · [skill/SKILL.md](skill/SKILL.md)
 - [Example configs gallery](examples/README.md) -- copy-ready `doxa.yaml` templates
+- [Example Q&A](docs/examples-qa.md) -- grounded answers on the demo base
 
 ---
 
 ## Example questions & answers
 
-These examples are from the bundled public-domain demo and were generated with
-`--search keyword`. Keyword is the default, so the reproduce lines use the
-shorter command form.
+A walkthrough of grounded answers on the bundled demo (Emerson, Plato, Madison) --
+including a real Socratic tension doxa surfaces rather than flattens -- is in
+[docs/examples-qa.md](docs/examples-qa.md). Or just run it:
 
-<details>
-<summary>Should I trust my own judgment over the crowd?</summary>
-
-The demo retrieves Emerson's belief that self-trust is necessary, but it also surfaces a real Socratic tension: confidence in judgment should be held alongside intellectual humility.
-
-`source=Self-Reliance / Ralph Waldo Emerson / 1841`
-`quote="Ralph Waldo Emerson: Trust thyself: every heart vibrates to that iron string."`
-
-`source=Apology / Plato, translated by Benjamin Jowett / 1892`
-`quote="Socrates: I know that I have no wisdom, small or great."`
-
-Reproduce: `doxa query "Should I trust my own judgment over the crowd?"`
-
-</details>
-
-<details>
-<summary>Is it rational to fear death?</summary>
-
-The demo grounds Socrates' answer in the belief that a good person need not fear ultimate harm from death.
-
-`source=Apology / Plato, translated by Benjamin Jowett / 1892`
-`quote="Socrates: Wherefore, O judges, be of good cheer about death, and know of a certainty, that no evil can happen to a good man, either in life or after death."`
-
-Reproduce: `doxa query "Is it rational to fear death?"`
-
-</details>
-
-<details>
-<summary>Should a republic eliminate liberty to stop faction?</summary>
-
-Madison complicates the idea: liberty feeds faction, but the retrieved belief says liberty is not a condition a republic can simply extinguish.
-
-`source=Federalist No. 10 / James Madison / 1787`
-`quote="James Madison: Liberty is to faction what air is to fire, an aliment without which it instantly expires."`
-
-`source=Federalist No. 10 / James Madison / 1787`
-`quote="James Madison: The latent causes of faction are thus sown in the nature of man."`
-
-Reproduce: `doxa query "Should a republic eliminate liberty to stop faction?"`
-
-</details>
-
-<details>
-<summary>What is the highest standard for the mind?</summary>
-
-The demo answers through Emerson: the highest retrieved standard is the integrity of one's own mind.
-
-`source=Self-Reliance / Ralph Waldo Emerson / 1841`
-`quote="Ralph Waldo Emerson: Nothing is at last sacred but the integrity of your own mind."`
-
-Reproduce: `doxa query "What is the highest standard for the mind?"`
-
-</details>
-
-<details>
-<summary>What makes a life worth living?</summary>
-
-The demo retrieves Socrates' belief that a worthy life requires examination.
-
-`source=Apology / Plato, translated by Benjamin Jowett / 1892`
-`quote="Socrates: The unexamined life is not worth living."`
-
-Reproduce: `doxa query "What makes a life worth living?"`
-
-</details>
+```bash
+doxa demo
+doxa query "Should I trust my own judgment over the crowd?"
+```
 
 ---
 
@@ -180,6 +125,9 @@ read the same source and produce different belief bases.
 ---
 
 ## doxa vs. a RAG app
+
+<details>
+<summary>Short version: it's RAG plumbing wrapped around a curated belief + quote graph. Expand for the full answer.</summary>
 
 Under the hood, doxa *is* RAG plumbing -- BM25 + pgvector hybrid over an embedded
 store. The difference is what sits in the index and what happens around it.
@@ -209,6 +157,8 @@ Three things follow that a vanilla RAG app doesn't have:
 The honest one-liner: doxa is RAG plumbing wrapped around a curated belief-and-quote
 graph with typed epistemic honesty, queried as a point of view rather than a document
 search. The retriever was never the moat; the data model and the discipline on top are.
+
+</details>
 
 ---
 
@@ -240,49 +190,17 @@ rebuilt from JSONL at any time.
 
 ## Install
 
-Core install is intentionally small. It supports config loading, demo data,
-keyword retrieval, evaluation, and plain text / URL ingestion:
+Core is intentionally small (config, demo, keyword query, eval, text/URL ingest):
 
 ```bash
-python -m pip install -e .
+python -m pip install -e .           # core
+python -m pip install -e ".[all]"    # every optional integration
 ```
 
-Install every optional runtime integration:
-
-```bash
-python -m pip install -e ".[all]"
-```
-
-Install by requirements file instead:
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-For test/dev work:
-
-```bash
-python -m pip install -r requirements-dev.txt
-python -m pytest -q
-```
-
-Extras are also available individually:
-
-```bash
-python -m pip install -e ".[embeddings,postgres]"
-python -m pip install -e ".[pdf,youtube]"
-python -m pip install -e ".[openai,anthropic]"
-```
-
-| Extra | Adds | Used by |
-| --- | --- | --- |
-| core | `PyYAML` | config, demo, keyword query, eval |
-| `embeddings` | `fastembed` | semantic vectors |
-| `postgres` | `psycopg2-binary`, `pgvector` | pgvector indexing/search |
-| `pdf` | `PyMuPDF` | PDF ingestion |
-| `youtube` | `yt-dlp` | YouTube transcript ingestion |
-| `openai` | `openai` | OpenAI and OpenAI-compatible mining |
-| `anthropic` | `anthropic` | Anthropic mining |
+Install only the extras you need -- `embeddings` (semantic vectors), `postgres`
+(pgvector), `pdf`, `youtube`, `openai`, `anthropic`, e.g.
+`pip install -e ".[pdf,youtube]"`. Full extras matrix + dev setup:
+[docs/configuration.md](docs/configuration.md).
 
 ---
 
