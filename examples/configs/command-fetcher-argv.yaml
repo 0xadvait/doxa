@@ -1,0 +1,44 @@
+# Command fetcher through argv.
+#
+# Use this when you already have a local scraper, MCP bridge, or internal fetch
+# command that prints markdown/text to stdout. argv is preferred because it avoids
+# shell interpolation.
+#
+# Usage:
+#   cp examples/configs/command-fetcher-argv.yaml doxa.yaml
+#   doxa ingest https://example.com/article --via command
+
+project:
+  name: command-fetched-belief-base
+
+data:
+  dir: data
+
+lens:
+  name: durable-beliefs
+  description: Extract durable claims, values, and stances that the source explicitly supports.
+  question: What does this source believe?
+  stances: [supports, questions, rejects, complicates]
+  tags: [research]
+
+llm:
+  provider: openai
+  model: gpt-4.1-mini
+  temperature: 0
+
+providers:
+  openai:
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4.1-mini
+
+sources:
+  fetcher: command
+  command:
+    # Replace with your scraper. {url} and {prompt} placeholders are expanded.
+    argv: [python, scripts/fetch_url.py, "{url}"]
+    timeout: 120
+    allow_shell: false
+
+retrieval:
+  default_search: keyword
+  limit: 5

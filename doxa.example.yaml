@@ -1,17 +1,16 @@
-# doxa configuration
+# doxa configuration example
 #
-# Copy this file to doxa.yaml with:
+# For most projects, prefer:
 #   doxa init
 #
-# The default provider is codex-cli because it uses your existing Codex CLI auth
-# and does not require a new API key. claude-cli behaves similarly for Claude
-# Code users. API providers are available behind extras.
+# This file is a fuller annotated reference you can copy to doxa.yaml when you
+# want to tune providers, fetchers, retrieval, domains, or semantic search.
 
 project:
   name: my-belief-base
 
 data:
-  # JSONL is the source of truth. These paths are relative to this config file.
+  # JSONL is the source of truth. Paths are relative to this config file.
   dir: data
   beliefs: beliefs.jsonl
   quotes: quotes.jsonl
@@ -41,21 +40,25 @@ llm:
 
 providers:
   codex-cli:
-    # Runs: codex exec --dangerously-bypass-approvals-and-sandbox -o <tmp_result> -
+    # Runs `codex exec` through argv with a bounded timeout.
+    # Set unsafe_bypass: true only for trusted local workflows that explicitly
+    # accept unattended agent execution risk.
     binary: codex
     flags:
       - exec
-      - --dangerously-bypass-approvals-and-sandbox
     output_flag: -o
+    timeout: 300
+    unsafe_bypass: false
 
   claude-cli:
-    # Runs: claude -p "<prompt>" --output-format json
+    # Runs Claude Code through argv with a bounded timeout.
     binary: claude
     flags:
       - -p
       - "{prompt}"
       - --output-format
       - json
+    timeout: 300
 
   openai:
     api_key_env: OPENAI_API_KEY
@@ -79,16 +82,38 @@ providers:
     model: claude-3-5-sonnet-latest
 
 sources:
-  # URL fetcher options: requests, brightdata.
-  # For agents with a BrightData MCP, prefer fetching there and piping text:
-  #   printf '%s' "$FETCHED_MARKDOWN" | doxa ingest - --title "Title" --url "https://..."
+  # URL fetcher options: requests, jina, firecrawl, brightdata, command,
+  # claude, codex, hermes. Override per ingest with `--via <name>`.
   fetcher: requests
+
+  jina:
+    api_key_env: JINA_API_KEY
+
+  firecrawl:
+    api_key_env: FIRECRAWL_API_KEY
+
   brightdata:
     api_token_env: BRIGHTDATA_API_TOKEN
     zone_env: BRIGHTDATA_ZONE
 
+  command:
+    # Prefer argv. It avoids a shell and can call any local scraper/MCP bridge.
+    # Example:
+    #   argv: ["my-scraper", "{url}"]
+    timeout: 120
+    # Shell mode is disabled unless allow_shell is true.
+    allow_shell: false
+
+  codex:
+    timeout: 300
+    unsafe_bypass: false
+
+  hermes:
+    timeout: 300
+    unsafe_yolo: false
+
 retrieval:
-  # keyword works with zero infrastructure. semantic needs embeddings+postgres.
+  # Keyword works with zero infrastructure. semantic/hybrid need embeddings+postgres.
   default_search: keyword
   limit: 5
   # Overfetch before final ranking so rare quote hits and domain boosts can surface.

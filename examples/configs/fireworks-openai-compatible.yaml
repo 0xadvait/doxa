@@ -1,0 +1,36 @@
+# OpenAI-compatible provider example, set up for Fireworks by default.
+#
+# Usage:
+#   cp examples/configs/fireworks-openai-compatible.yaml doxa.yaml
+#   export FIREWORKS_API_KEY=...
+#   doxa ingest ./source.txt
+#
+# Replace the model slug with the Fireworks model you want to use.
+
+project:
+  name: fireworks-belief-base
+
+data:
+  dir: data
+
+lens:
+  name: strategy-beliefs
+  description: Extract durable claims about strategy, tradeoffs, decisions, and operating principles.
+  question: What operating beliefs does this source explicitly support?
+  stances: [supports, questions, rejects, complicates]
+  tags: [strategy, decisions]
+
+llm:
+  provider: openai-compatible
+  model: accounts/fireworks/models/<model-slug>
+  temperature: 0
+
+providers:
+  openai-compatible:
+    base_url: https://api.fireworks.ai/inference/v1
+    api_key_env: FIREWORKS_API_KEY
+    model: accounts/fireworks/models/<model-slug>
+
+retrieval:
+  default_search: keyword
+  limit: 5

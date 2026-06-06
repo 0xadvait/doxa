@@ -1,0 +1,50 @@
+# Safe agent fetcher examples.
+#
+# Agent fetchers let a local CLI agent fetch/render hard web pages before doxa
+# mines them. They are safe by default: no unattended bypass/yolo flags unless
+# you opt in explicitly for trusted sources.
+#
+# Usage examples:
+#   cp examples/configs/agent-fetchers-safe.yaml doxa.yaml
+#   doxa ingest https://example.com/article --via hermes --mode browser
+#   doxa ingest https://example.com/article --via codex --mode extract --prompt "return clean markdown only"
+
+project:
+  name: agent-fetched-belief-base
+
+data:
+  dir: data
+
+lens:
+  name: durable-beliefs
+  description: Extract durable claims, values, and stances that the source explicitly supports.
+  question: What does this source believe?
+  stances: [supports, questions, rejects, complicates]
+  tags: [web, research]
+
+llm:
+  provider: codex-cli
+  temperature: 0
+
+providers:
+  codex-cli:
+    binary: codex
+    flags: [exec]
+    output_flag: -o
+    timeout: 300
+    unsafe_bypass: false
+
+sources:
+  fetcher: requests
+  claude:
+    timeout: 300
+  codex:
+    timeout: 300
+    unsafe_bypass: false
+  hermes:
+    timeout: 300
+    unsafe_yolo: false
+
+retrieval:
+  default_search: keyword
+  limit: 5
