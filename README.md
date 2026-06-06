@@ -77,8 +77,9 @@ Keyword search works with no API key, database, embedding model, or network.
 ## Docs
 
 - [Configuration](docs/configuration.md) · [Providers](docs/providers.md) · [Ingestion](docs/ingestion.md)
-- [Retrieval](docs/retrieval.md) · [Writing a lens](docs/writing-a-lens.md) · [Architecture](docs/architecture.md)
+- [Retrieval](docs/retrieval.md) · [Writing a lens](docs/writing-a-lens.md) · [Schema](docs/schema.md) · [Architecture](docs/architecture.md)
 - [Agent skill](docs/skill.md) · [AGENTS.md](AGENTS.md) · [skill/SKILL.md](skill/SKILL.md)
+- [Example configs gallery](examples/README.md) -- copy-ready `doxa.yaml` templates
 
 ---
 
