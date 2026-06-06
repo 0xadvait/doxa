@@ -9,12 +9,12 @@
 ║██████╔╝╚██████╔╝██╔╝ ██╗██║  ██║       verdict: NO QUOTE // NO CLAIM                 ║
 ║╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝       unsourced prophecy stays dark                 ║
 ║                                                                                      ║
-║        ⠀⠀⠀⢀⣠⣤⣤⣀⠀⠀⠀⠀      .    .:*        +       .                                   ║
-║        ⠀⣠⣾⣿⠟⠛⠻⣿⣷⣄⠀⠀      evidence rises like signal                                  ║
+║           ⢀⣠⣤⣤⣀          .    .:*        +       .                                   ║
+║         ⣠⣾⣿⠟⠛⠻⣿⣷⣄        evidence rises like signal                                  ║
 ║        ⢰⣿⣿⡏  ◉  ◉  ⢹⣿⣿⡆      belief == claim + receipts                              ║
 ║        ⠘⣿⣿⣇   ▵    ⣸⣿⣿⠃      every answer carries a quote                            ║
-║        ⠀⠈⠻⣿⣷⣤⣴⣿⠟⠁⠀⠀      .       *      .:*     +                                    ║
-║        ⠀⠀⠀⠀⠉⠛⠛⠉⠀⠀⠀⠀      DOXA keeps the oracle honest                                ║
+║         ⠈⠻⣿⣷⣤⣴⣿⠟⠁        .       *      .:*     +                                    ║
+║            ⠉⠛⠛⠉          DOXA keeps the oracle honest                                ║
 ╚══════════════════════════════════════════════════════════════════════════════════════╝
 ```
 
