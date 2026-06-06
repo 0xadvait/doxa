@@ -16,6 +16,17 @@ phrase that appears only inside a quote can still retrieve the belief grounded
 by that quote. When a quote matched the query, it is displayed before other
 linked quotes.
 
+The default terminal view is the raw retrieval record format. Add `--answer`
+when you want a deterministic local answer for a human reader:
+
+```bash
+doxa query "self-reliance" --search keyword --answer
+```
+
+Answer rendering uses only returned, quote-backed beliefs. It may clean
+non-quote prose, but it prints quote strings exactly as stored. JSON output
+remains the raw retrieval payload.
+
 Useful config:
 
 ```yaml

@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from .answer import render_terminal_answer
 from .config import DEFAULT_CONFIG, data_dir, load_config
 from .domains import (
     add_domain_weight,
@@ -297,6 +298,9 @@ def cmd_query(args: argparse.Namespace) -> int:
     if not results:
         print("No matching beliefs found.")
         return 0
+    if args.answer:
+        print(render_terminal_answer(args.query, results))
+        return 0
     for index, result in enumerate(results, start=1):
         print(_format_result(result, index))
     return 0
@@ -450,6 +454,7 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("--domain", action="append", default=[], help="Boost results tagged with domain:<slug>. Repeatable.")
     query.add_argument("--domains", default="", help="Comma-separated domain slugs to boost.")
     query.add_argument("--no-domain-boost", action="store_true", help="Disable configured domain preference boosts.")
+    query.add_argument("--answer", action="store_true", help="Render a local humanized terminal answer.")
     query.add_argument("--json", action="store_true")
     query.set_defaults(func=cmd_query)
 

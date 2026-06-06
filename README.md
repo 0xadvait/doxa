@@ -434,6 +434,18 @@ Use JSON output for downstream tools:
 doxa query "examined life" --json
 ```
 
+Use `--answer` when you want a terminal-facing answer instead of raw retrieval
+records:
+
+```bash
+doxa query "examined life" --search keyword --answer
+```
+
+`--answer` is local and deterministic. It smooths only the non-quote prose,
+omits retrieved beliefs that have no returned quote, and prints stored quote
+strings exactly as returned. The default plain retrieval output remains the raw
+record view, and `--json` output is unchanged for downstream tools.
+
 Only quote what doxa returns. If retrieval returns too little evidence, ingest
 more trusted sources rather than filling the gap yourself.
 
@@ -647,6 +659,7 @@ Run:
 python -m pytest -q
 doxa demo
 doxa query "self-reliance and conformity" --search keyword
+doxa query "self-reliance and conformity" --search keyword --answer
 ```
 
 Licensed under the MIT License. See [LICENSE](LICENSE).

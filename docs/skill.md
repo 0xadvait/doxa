@@ -38,6 +38,12 @@ For answers, the skill tells the agent to run:
 doxa query "<question>" --search hybrid
 ```
 
+For final prose, the agent can use the deterministic local renderer:
+
+```bash
+doxa query "<question>" --search hybrid --answer
+```
+
 The agent may add domain focus when useful:
 
 ```bash
@@ -58,6 +64,8 @@ printf '%s' "$FETCHED_TEXT" | doxa ingest - --title "Title" --url "https://sourc
 ```
 
 The returned beliefs and quotes are the only ground truth. The agent must not
-invent quotes, sources, attributions, or claims. If retrieval is thin, the
-agent should say that the belief base does not contain enough grounded evidence
-and offer to ingest more trusted sources.
+invent quotes, sources, attributions, or claims. It may smooth the connective
+prose, but returned quote spans must be copied exactly, including punctuation,
+capitalization, and whitespace. If retrieval is thin, the agent should say that
+the belief base does not contain enough grounded evidence and offer to ingest
+more trusted sources.
