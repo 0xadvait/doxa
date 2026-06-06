@@ -259,9 +259,21 @@ doxa init            # interactive: provider, model, lens -> writes doxa.yaml
 doxa status          # config, data dir, belief/quote counts, provider, semantic
 ```
 
-`doxa init` is also scriptable (`--yes --provider ... --model ... --lens "..."`),
-and domain weights tune retrieval (`doxa domains set technical 8`). Full options:
-[docs/configuration.md](docs/configuration.md).
+**Don't invent your first lens** -- a lens is the question doxa asks while
+reading, and "which one?" is non-obvious, so doxa ships an opinionated library:
+
+```bash
+doxa lenses list                                  # founder-strategy, investment-memo, ...
+doxa init --lens-template founder-strategy        # seed a config from a template
+doxa lenses add my-lens --from founder-strategy   # fork one and make it your own
+```
+
+Built-ins: `durable-beliefs`, `founder-strategy`, `investment-memo`,
+`technical-design`, `research-literature`, `policy-analysis`,
+`personal-principles`, `customer-discovery`. `doxa init` is also scriptable
+(`--yes --provider ... --model ...`), and domain weights tune retrieval
+(`doxa domains set technical 8`). Full options:
+[docs/configuration.md](docs/configuration.md) · [writing a lens](docs/writing-a-lens.md).
 
 ---
 

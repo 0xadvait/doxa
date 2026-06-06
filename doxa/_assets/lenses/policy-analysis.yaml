@@ -1,0 +1,21 @@
+# doxa lens template: policy-analysis
+# Policy debates: positions, tradeoffs, stakeholders, and consequences.
+# Fork it:  doxa lenses add my-policy-analysis --from policy-analysis
+
+name: policy-analysis
+summary: 'Policy debates: positions, tradeoffs, stakeholders, and consequences.'
+description: Extract policy beliefs -- positions, the values and tradeoffs behind them, the stakeholders
+  affected, and the consequences predicted. Keep normative claims (what should be) distinct from empirical
+  ones (what is).
+question: What does this source argue should be done, on what values and evidence?
+stances:
+- supports
+- opposes
+- tradeoff
+- empirical-claim
+tags:
+- position
+- tradeoff
+- stakeholder
+- consequence
+- value

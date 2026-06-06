@@ -1,0 +1,21 @@
+# doxa lens template: technical-design
+# Engineering: architecture decisions, tradeoffs, and failure modes.
+# Fork it:  doxa lenses add my-technical-design --from technical-design
+
+name: technical-design
+summary: 'Engineering: architecture decisions, tradeoffs, and failure modes.'
+description: Extract engineering beliefs -- design decisions, constraints, tradeoffs, and failure modes
+  the source argues for, each with the reasoning that justifies the choice. Capture anti-patterns and
+  the cost a decision accepts, not just the upside.
+question: What design decision does this source argue for, and what tradeoff does it accept?
+stances:
+- recommends
+- cautions
+- tradeoff
+- anti-pattern
+tags:
+- architecture
+- performance
+- reliability
+- complexity
+- tradeoff

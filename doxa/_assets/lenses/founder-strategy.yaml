@@ -1,0 +1,22 @@
+# doxa lens template: founder-strategy
+# Building companies: decisions, tradeoffs, and hard-won startup lessons.
+# Fork it:  doxa lenses add my-founder-strategy --from founder-strategy
+
+name: founder-strategy
+summary: 'Building companies: decisions, tradeoffs, and hard-won startup lessons.'
+description: Extract operative beliefs about building startups -- product, growth, hiring, fundraising,
+  focus, and timing -- stated as decisions a founder could act on, with the reasoning behind them. Prefer
+  specific, contestable advice over platitudes.
+question: What does this source believe a founder should do, and why?
+stances:
+- recommends
+- warns-against
+- depends
+- reframes
+tags:
+- product
+- growth
+- hiring
+- fundraising
+- focus
+- timing

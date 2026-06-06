@@ -87,6 +87,8 @@ def guide_text(color: bool = False) -> str:
             "        \"provider\") and the \"lens\" -- the kind of beliefs you want extracted.",
             "        " + d("codex-cli / claude-cli need no API key (they reuse your existing"),
             "        " + d("Codex / Claude login). openai / fireworks / anthropic need a key."),
+            "        " + d("Not sure which lens? `doxa lenses list` and start from a template:"),
+            "        " + d("doxa init --lens-template founder-strategy"),
             "",
             "  " + t("3. doxa ingest <source>"),
             "        Mine a source into beliefs + quotes. A source can be:",

@@ -1,0 +1,22 @@
+# doxa lens template: customer-discovery
+# Talking to users: pains, jobs-to-be-done, and signal strength.
+# Fork it:  doxa lenses add my-customer-discovery --from customer-discovery
+
+name: customer-discovery
+summary: 'Talking to users: pains, jobs-to-be-done, and signal strength.'
+description: Extract beliefs about customers -- their problems, jobs-to-be-done, current workarounds,
+  and the strength of the signal behind each -- grounded in what users actually said, not what we wish
+  they meant. Distinguish a real pain from a polite nod.
+question: What does this source reveal about what customers actually need?
+stances:
+- pain
+- job
+- workaround
+- signal
+- anti-signal
+tags:
+- pain
+- job-to-be-done
+- workaround
+- willingness-to-pay
+- segment

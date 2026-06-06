@@ -1,0 +1,21 @@
+# doxa lens template: research-literature
+# Papers and research: findings, claims, and stated limitations.
+# Fork it:  doxa lenses add my-research-literature --from research-literature
+
+name: research-literature
+summary: 'Papers and research: findings, claims, and stated limitations.'
+description: Extract the source's findings, claims, methods, and limitations -- what it argues is true,
+  on what evidence, and where it hedges. Attribute precisely and never overstate a finding beyond what
+  the source claims.
+question: What does this source claim to have found, and how strongly?
+stances:
+- finding
+- hypothesis
+- limitation
+- contradicts-prior
+tags:
+- finding
+- method
+- evidence
+- limitation
+- open-question
