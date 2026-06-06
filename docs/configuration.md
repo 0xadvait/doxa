@@ -62,11 +62,17 @@ preferences:
     technical: 3
     policy: 2
     creative: 2
+  domain_aliases:
+    crypto: [token-economics, tokenomics, tokens, web3, blockchain, defi]
+    startups: [startup, startups, founders, company-building]
+    relationships: [trust, communication, friendship]
 ```
 
 Weights are integers from 0 to 10. Mining prompts see these as `domain:<slug>`
 tagging hints. Retrieval gives a small boost to beliefs or quotes with matching
-domain tags.
+domain tags. Alias terms extend the exact `domain:<slug>` match for retrieval,
+so older stores with plain tags such as `token-economics`, `founders`, `trust`,
+`taste`, or `health` do not need a JSONL migration.
 
 Manage domains from the CLI:
 

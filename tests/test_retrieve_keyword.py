@@ -206,3 +206,135 @@ def test_domain_boost_can_promote_matching_domain_tag(tmp_path: Path) -> None:
 
     assert unboosted[0].belief.id == "b_plain"
     assert boosted[0].belief.id == "b_domain"
+
+
+def test_domain_boost_can_promote_default_legacy_alias_tag(tmp_path: Path) -> None:
+    source = _source()
+    config = _write_store(
+        tmp_path,
+        beliefs=[
+            {
+                "id": "b_plain",
+                "belief": "Shared retrieval phrase supports the same surface match.",
+                "reasoning": "The score should tie before domain preferences.",
+                "stance": "supports",
+                "conviction": 0.8,
+                "tags": [],
+                "source": source,
+            },
+            {
+                "id": "b_legacy",
+                "belief": "Shared retrieval phrase supports the same surface match.",
+                "reasoning": "The score should tie before domain preferences.",
+                "stance": "supports",
+                "conviction": 0.8,
+                "tags": ["token-economics"],
+                "source": source,
+            },
+        ],
+        quotes=[
+            {
+                "id": "q_plain",
+                "quote": "Shared retrieval phrase.",
+                "speaker": "",
+                "source": source,
+                "context": "",
+                "tags": [],
+                "belief_ids": ["b_plain"],
+            },
+            {
+                "id": "q_legacy",
+                "quote": "Shared retrieval phrase.",
+                "speaker": "",
+                "source": source,
+                "context": "",
+                "tags": ["token-economics"],
+                "belief_ids": ["b_legacy"],
+            },
+        ],
+    )
+    config["preferences"]["domains"]["crypto"] = 10
+
+    unboosted, _ = search(
+        "shared retrieval phrase",
+        config,
+        search_type="keyword",
+        limit=2,
+        domain_boost=False,
+    )
+    boosted, _ = search(
+        "shared retrieval phrase",
+        config,
+        search_type="keyword",
+        limit=2,
+    )
+
+    assert unboosted[0].belief.id == "b_plain"
+    assert boosted[0].belief.id == "b_legacy"
+
+
+def test_domain_boost_can_promote_custom_legacy_alias_tag(tmp_path: Path) -> None:
+    source = _source()
+    config = _write_store(
+        tmp_path,
+        beliefs=[
+            {
+                "id": "b_plain",
+                "belief": "Shared retrieval phrase supports the same surface match.",
+                "reasoning": "The score should tie before domain preferences.",
+                "stance": "supports",
+                "conviction": 0.8,
+                "tags": [],
+                "source": source,
+            },
+            {
+                "id": "b_custom",
+                "belief": "Shared retrieval phrase supports the same surface match.",
+                "reasoning": "The score should tie before domain preferences.",
+                "stance": "supports",
+                "conviction": 0.8,
+                "tags": ["boardroom"],
+                "source": source,
+            },
+        ],
+        quotes=[
+            {
+                "id": "q_plain",
+                "quote": "Shared retrieval phrase.",
+                "speaker": "",
+                "source": source,
+                "context": "",
+                "tags": [],
+                "belief_ids": ["b_plain"],
+            },
+            {
+                "id": "q_custom",
+                "quote": "Shared retrieval phrase.",
+                "speaker": "",
+                "source": source,
+                "context": "",
+                "tags": ["boardroom"],
+                "belief_ids": ["b_custom"],
+            },
+        ],
+    )
+    config["preferences"]["domain_aliases"]["operator"] = ["boardroom"]
+
+    unboosted, _ = search(
+        "shared retrieval phrase",
+        config,
+        search_type="keyword",
+        limit=2,
+        domains=["operator"],
+        domain_boost=False,
+    )
+    boosted, _ = search(
+        "shared retrieval phrase",
+        config,
+        search_type="keyword",
+        limit=2,
+        domains=["operator"],
+    )
+
+    assert unboosted[0].belief.id == "b_plain"
+    assert boosted[0].belief.id == "b_custom"

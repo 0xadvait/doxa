@@ -9,7 +9,7 @@ import math
 import re
 from typing import Any
 
-from .domains import active_domain_weights, domain_multiplier_for_result
+from .domains import active_domain_weights, domain_aliases, domain_multiplier_for_result
 from .embed import embed_texts
 from .schema import Belief, DoxaError, Quote, RetrievalResult
 from .store import JsonlStore, postgres_connect
@@ -131,10 +131,11 @@ def _rank_results(
     domain_boost: bool = True,
 ) -> list[RetrievalResult]:
     active_weights = active_domain_weights(config, domains, enabled=domain_boost)
+    aliases = domain_aliases(config) if active_weights else {}
     boosted: list[tuple[int, RetrievalResult]] = []
     for order, result in enumerate(results):
         quotes = _cap_quotes(result.quotes, max_quotes_per_result)
-        multiplier = domain_multiplier_for_result(result.belief, result.quotes, active_weights)
+        multiplier = domain_multiplier_for_result(result.belief, result.quotes, active_weights, aliases)
         boosted.append(
             (
                 order,

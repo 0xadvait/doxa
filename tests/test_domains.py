@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from doxa.domains import chart, export_domain_weights, normalize_weight, parse_domain_selectors
+from doxa.domains import chart, domain_aliases, export_domain_weights, normalize_weight, parse_domain_selectors
 from doxa.schema import DoxaError
 
 
@@ -24,6 +24,24 @@ def test_export_domain_weights_can_emit_yaml() -> None:
     exported = export_domain_weights({"technical": 8})
     assert "preferences:" in exported
     assert "technical: 8" in exported
+
+
+def test_domain_aliases_merge_defaults_and_custom_terms() -> None:
+    aliases = domain_aliases(
+        {
+            "preferences": {
+                "domains": {"strategy": 7},
+                "domain_aliases": {
+                    "Strategy": ["Board Room", "operator-notes"],
+                    "crypto": "exchange-listings",
+                },
+            }
+        }
+    )
+
+    assert "token-economics" in aliases["crypto"]
+    assert "exchange-listings" in aliases["crypto"]
+    assert aliases["strategy"] == ["board-room", "operator-notes", "strategy"]
 
 
 def test_domain_weight_validation() -> None:

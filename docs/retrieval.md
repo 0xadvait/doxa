@@ -49,6 +49,9 @@ warning.
 Domain preferences are small 0-10 weights under `preferences.domains`. Mining
 prompts ask the provider to tag clear matches as `domain:<slug>` on beliefs and
 quotes. Retrieval then gives matching tags a small boost after overfetching.
+It also checks `preferences.domain_aliases` so active domains can match older
+plain tags. For example, `crypto` can match `token-economics`, `startups` can
+match `founders`, and `relationships` can match `trust`.
 
 View or edit preferences:
 

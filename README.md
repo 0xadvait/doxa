@@ -23,7 +23,7 @@ Most "chat with your notes" tools let an LLM paraphrase your sources and quietly
 - **Local and portable** — a plain JSONL source of truth you can read, diff, and re-index.
 - **Any lens, any model** — mine a source through your perspective, with codex-cli / claude-cli (no API key) or OpenAI / Fireworks / Anthropic.
 - **Quote-first retrieval** — keyword search indexes belief docs and quote docs, then folds quote hits back to linked beliefs.
-- **Domain preferences** — small 0-10 domain weights steer mining tags and retrieval boosts without changing JSONL schema.
+- **Domain preferences** — small 0-10 domain weights steer mining tags and retrieval boosts without changing JSONL schema. Alias terms keep older plain tags useful.
 - **Keyword → semantic → hybrid** — works with zero setup; add embeddings when you want them.
 
 **For AI agents:** start with [AGENTS.md](AGENTS.md); install as a harness skill via [skill/SKILL.md](skill/SKILL.md).
@@ -278,7 +278,10 @@ doxa domains export
 ```
 
 Domains are represented as ordinary `domain:<slug>` tags on beliefs and quotes,
-so old JSONL stores keep working.
+so old JSONL stores keep working. Retrieval also matches legacy plain tags through
+`preferences.domain_aliases`; for example, `--domain crypto` can boost records
+tagged `token-economics`, and `--domain relationships` can boost records tagged
+`trust`.
 
 ---
 
@@ -586,8 +589,9 @@ tags, and are safe for ingest and prompt construction.
 Stored source records keep the full text so quote faithfulness can be checked
 again later.
 
-Domain preferences use normal tags such as `domain:technical`; no schema
-migration is required.
+Domain preferences use normal tags such as `domain:technical`, plus optional
+plain-tag aliases under `preferences.domain_aliases`; no schema migration is
+required.
 
 ---
 

@@ -26,6 +26,51 @@ DEFAULT_DOMAIN_WEIGHTS: dict[str, int] = {
     "creative": 2,
 }
 
+DEFAULT_DOMAIN_ALIASES: dict[str, tuple[str, ...]] = {
+    "ai": (
+        "artificial-intelligence",
+        "agents",
+        "llm",
+        "llms",
+        "machine-learning",
+        "ml",
+        "models",
+    ),
+    "biotech": ("bio", "biology", "clinical", "genomics", "health", "medical", "medicine", "pharma"),
+    "creative": (
+        "art",
+        "aesthetics",
+        "culture",
+        "design",
+        "myth",
+        "myths",
+        "religion",
+        "storytelling",
+        "taste",
+        "writing",
+    ),
+    "crypto": ("blockchain", "defi", "protocols", "token-economics", "tokenomics", "tokens", "web3"),
+    "finance": ("economics", "finance", "investing", "macro", "markets", "money"),
+    "general": ("misc", "miscellaneous"),
+    "life-advice": ("advice", "agency", "career", "decision-making", "habits", "judgment", "self-improvement"),
+    "policy": ("governance", "government", "law", "legal", "policy", "regulation"),
+    "relationships": ("communication", "dating", "family", "friendship", "love", "relationship", "social", "trust"),
+    "research": ("benchmarks", "evidence", "experiments", "papers", "research", "science"),
+    "startups": ("company-building", "founder", "founders", "fundraising", "growth", "hiring", "startup", "startups"),
+    "technical": (
+        "architecture",
+        "devtools",
+        "engineering",
+        "incident-response",
+        "infrastructure",
+        "programming",
+        "security",
+        "software",
+        "systems",
+    ),
+    "venture-capital": ("fundraising", "funds", "investment", "investing", "term-sheets", "vc", "venture"),
+}
+
 
 def normalize_domain_slug(raw: str) -> str:
     """Return a stable domain slug suitable for a ``domain:<slug>`` tag."""
@@ -50,6 +95,23 @@ def normalize_weight(raw: Any) -> int:
 
 def domain_tag(slug: str) -> str:
     return f"{DOMAIN_TAG_PREFIX}{normalize_domain_slug(slug)}"
+
+
+def normalize_domain_alias(raw: str) -> str:
+    alias = str(raw or "").strip().lower()
+    if alias.startswith(DOMAIN_TAG_PREFIX):
+        alias = alias[len(DOMAIN_TAG_PREFIX) :]
+    return normalize_domain_slug(alias)
+
+
+def _alias_values(raw: Any) -> list[str]:
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        return [part for part in raw.split(",")]
+    if isinstance(raw, (list, tuple, set)):
+        return [str(value) for value in raw]
+    raise DoxaError("Domain aliases must be strings or lists of strings.")
 
 
 def parse_domain_selectors(repeated: list[str] | None = None, comma_list: str | None = None) -> list[str]:
@@ -85,6 +147,33 @@ def domain_weights(config: dict[str, Any]) -> dict[str, int]:
     return weights
 
 
+def domain_aliases(config: dict[str, Any]) -> dict[str, list[str]]:
+    """Return default and configured plain-tag aliases for each domain slug."""
+
+    aliases: dict[str, set[str]] = {}
+    for slug, values in DEFAULT_DOMAIN_ALIASES.items():
+        normalized_slug = normalize_domain_slug(slug)
+        aliases.setdefault(normalized_slug, set()).add(normalized_slug)
+        aliases[normalized_slug].update(normalize_domain_alias(value) for value in values if str(value).strip())
+    for slug in domain_weights(config):
+        aliases.setdefault(slug, set()).add(slug)
+    prefs = config.get("preferences") or {}
+    if not isinstance(prefs, dict):
+        return {slug: sorted(values) for slug, values in aliases.items()}
+    raw = prefs.get("domain_aliases", {})
+    if raw is None:
+        return {slug: sorted(values) for slug, values in aliases.items()}
+    if not isinstance(raw, dict):
+        raise DoxaError("preferences.domain_aliases must be a mapping of domain slugs to alias lists.")
+    for slug, values in raw.items():
+        normalized_slug = normalize_domain_slug(str(slug))
+        aliases.setdefault(normalized_slug, set()).add(normalized_slug)
+        aliases[normalized_slug].update(
+            normalize_domain_alias(value) for value in _alias_values(values) if str(value).strip()
+        )
+    return {slug: sorted(values) for slug, values in aliases.items()}
+
+
 def active_domain_weights(
     config: dict[str, Any],
     requested: list[str] | None = None,
@@ -116,12 +205,44 @@ def domain_slugs_from_tags(tags: list[str]) -> set[str]:
     return slugs
 
 
-def domain_multiplier_for_tags(tags: list[str], active_weights: dict[str, int]) -> float:
+def domain_match_slugs_from_tags(
+    tags: list[str],
+    active_weights: dict[str, int],
+    aliases: dict[str, list[str]] | None = None,
+) -> set[str]:
+    matches = domain_slugs_from_tags(tags)
+    if not active_weights:
+        return matches
+    active_aliases: dict[str, set[str]] = {}
+    for slug in active_weights:
+        active_aliases[slug] = {slug}
+        active_aliases[slug].update(aliases.get(slug, []) if aliases else [])
+    alias_to_domains: dict[str, set[str]] = {}
+    for slug, values in active_aliases.items():
+        for value in values:
+            alias_to_domains.setdefault(value, set()).add(slug)
+    for tag in tags:
+        raw = str(tag).strip().lower()
+        if not raw or raw.startswith(DOMAIN_TAG_PREFIX):
+            continue
+        try:
+            normalized = normalize_domain_alias(raw)
+        except DoxaError:
+            continue
+        matches.update(alias_to_domains.get(normalized, set()))
+    return matches
+
+
+def domain_multiplier_for_tags(
+    tags: list[str],
+    active_weights: dict[str, int],
+    aliases: dict[str, list[str]] | None = None,
+) -> float:
     """Return a small multiplier based on matching domain tags."""
 
     if not active_weights:
         return 1.0
-    matches = domain_slugs_from_tags(tags)
+    matches = domain_match_slugs_from_tags(tags, active_weights, aliases)
     if not matches:
         return 1.0
     weight = max((active_weights.get(slug, 0) for slug in matches), default=0)
@@ -130,11 +251,16 @@ def domain_multiplier_for_tags(tags: list[str], active_weights: dict[str, int]) 
     return 1.0 + weight / 20.0
 
 
-def domain_multiplier_for_result(belief: Belief, quotes: list[Quote], active_weights: dict[str, int]) -> float:
+def domain_multiplier_for_result(
+    belief: Belief,
+    quotes: list[Quote],
+    active_weights: dict[str, int],
+    aliases: dict[str, list[str]] | None = None,
+) -> float:
     tags = list(belief.tags)
     for quote in quotes:
         tags.extend(quote.tags)
-    return domain_multiplier_for_tags(tags, active_weights)
+    return domain_multiplier_for_tags(tags, active_weights, aliases)
 
 
 def domain_prompt_lines(config: dict[str, Any]) -> list[str]:

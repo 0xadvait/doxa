@@ -71,8 +71,10 @@ doxa domains add finance 6
 doxa domains remove creative
 ```
 
-Domains are stored as `domain:<slug>` tags on beliefs and quotes. They may boost
-retrieval, but they do not replace quote grounding.
+Domains are stored as `domain:<slug>` tags on beliefs and quotes. Retrieval also
+uses `preferences.domain_aliases` so legacy plain tags such as `founders`,
+`token-economics`, `trust`, or `taste` can boost the requested domain. Domain
+boosts do not replace quote grounding.
 
 ## Grounding rule
 

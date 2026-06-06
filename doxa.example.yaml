@@ -110,6 +110,12 @@ preferences:
     technical: 3
     policy: 2
     creative: 2
+  # Aliases extend retrieval boosts to older plain tags without changing JSONL.
+  domain_aliases:
+    crypto: [token-economics, tokenomics, tokens, web3, blockchain, defi]
+    startups: [startup, startups, founders, company-building]
+    relationships: [trust, communication, friendship]
+    creative: [design, taste, myths, religion, writing]
 
 embeddings:
   # Used by doxa[embeddings] for semantic indexing.
