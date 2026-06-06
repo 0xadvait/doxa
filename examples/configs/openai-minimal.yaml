@@ -1,0 +1,35 @@
+# Minimal API-backed doxa project.
+#
+# Usage:
+#   cp examples/configs/openai-minimal.yaml doxa.yaml
+#   export OPENAI_API_KEY=...
+#   doxa ingest ./source.txt
+#   doxa query "what does this source believe?" --answer
+
+project:
+  name: openai-belief-base
+
+data:
+  dir: data
+
+lens:
+  name: durable-beliefs
+  description: Extract durable claims, values, and stances that the source explicitly supports.
+  question: What does this source believe about how people should think, decide, or act?
+  stances: [supports, questions, rejects, complicates]
+  tags: [agency, judgment]
+
+llm:
+  provider: openai
+  model: gpt-4.1-mini
+  temperature: 0
+
+providers:
+  openai:
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4.1-mini
+    base_url: ""
+
+retrieval:
+  default_search: keyword
+  limit: 5

@@ -1,0 +1,47 @@
+# Optional semantic/hybrid search with Postgres + pgvector.
+#
+# Usage:
+#   cp examples/configs/semantic-postgres.yaml doxa.yaml
+#   export OPENAI_API_KEY=...
+#   export DOXA_POSTGRES_DSN=postgresql://user:pass@localhost:5432/doxa
+#   python -m pip install -e ".[embeddings,postgres,openai]"
+#   doxa ingest ./source.txt
+#   doxa index
+#   doxa query "political conflict" --search hybrid
+
+project:
+  name: semantic-belief-base
+
+data:
+  dir: data
+
+lens:
+  name: durable-beliefs
+  description: Extract durable claims, values, and stances that the source explicitly supports.
+  question: What does this source believe?
+  stances: [supports, questions, rejects, complicates]
+  tags: [research]
+
+llm:
+  provider: openai
+  model: gpt-4.1-mini
+  temperature: 0
+
+providers:
+  openai:
+    api_key_env: OPENAI_API_KEY
+    model: gpt-4.1-mini
+
+retrieval:
+  default_search: hybrid
+  limit: 8
+  candidate_limit: 80
+  max_quotes_per_result: 3
+
+embeddings:
+  model: BAAI/bge-small-en-v1.5
+  dimension: 384
+
+postgres:
+  dsn_env: DOXA_POSTGRES_DSN
+  table_prefix: doxa
