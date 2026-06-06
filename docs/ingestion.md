@@ -14,36 +14,44 @@ Text and default URL ingestion use the standard library. PDF ingestion requires
 to read source text from stdin; `--title`, `--author`, and `--url` attach
 metadata to stdin or text sources.
 
-## Tough sources / BrightData
+## Web fetchers (pluggable)
 
-For an MCP-equipped agent, the easiest path is to fetch a bot-protected source
-with the harness's BrightData MCP and pipe the returned markdown or text into
-doxa. This path does not require a BrightData token in doxa:
+doxa is not tied to one scraper. The URL fetcher is chosen per ingest with
+`--via`, or set as a default with `sources.fetcher`. Built-ins:
 
-```bash
-printf '%s' "$FETCHED_MARKDOWN" | \
-  doxa ingest - --title "Article title" --url "https://target.example"
-```
-
-For direct CLI use, doxa can route URL fetching through BrightData Web Unlocker:
+- `requests` -- plain HTTP + stdlib HTML extraction (default, no key).
+- `jina` -- Jina Reader, clean markdown, free (`JINA_API_KEY` optional for higher limits).
+- `firecrawl` -- Firecrawl scrape API (`FIRECRAWL_API_KEY`).
+- `brightdata` -- BrightData Web Unlocker (`BRIGHTDATA_API_TOKEN` + `BRIGHTDATA_ZONE`).
+- `command` -- run any external tool or MCP bridge that prints text to stdout.
 
 ```bash
-export BRIGHTDATA_API_TOKEN=...
-export BRIGHTDATA_ZONE=...
+doxa ingest https://target.example --via jina
+doxa ingest https://target.example --via firecrawl
 doxa ingest https://target.example --via brightdata
 ```
 
-Config defaults:
+```yaml
+sources:
+  fetcher: jina            # default URL fetcher
+  jina: { api_key_env: JINA_API_KEY }
+  firecrawl: { api_key_env: FIRECRAWL_API_KEY }
+  brightdata: { api_token_env: BRIGHTDATA_API_TOKEN, zone_env: BRIGHTDATA_ZONE }
+```
+
+The `command` fetcher is the universal hook -- wire any scraper or MCP. It runs
+your command (with `{url}` substituted) and ingests its stdout:
 
 ```yaml
 sources:
-  fetcher: requests
-  brightdata:
-    api_token_env: BRIGHTDATA_API_TOKEN
-    zone_env: BRIGHTDATA_ZONE
+  fetcher: command
+  command:
+    argv: ["my-fetch", "{url}"]   # or shell: "my-fetch {url}"; prints text to stdout
 ```
 
-Set `sources.fetcher: brightdata` to make BrightData the default URL fetcher.
+MCP-equipped agents can also skip fetchers and pipe pre-fetched markdown straight
+into `doxa ingest -`. Add a custom fetcher in Python with
+`doxa.sources.fetchers.register_fetcher(name, fn)`.
 
 The miner asks the configured provider for JSON with `beliefs` and `quotes`.
 Every returned quote is checked against the source text. Quotes that fail the

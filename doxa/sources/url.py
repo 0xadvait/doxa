@@ -78,12 +78,7 @@ def source_from_url_content(url: str, text: str, content_type: str = "") -> Sour
 
 
 def load_url(url: str, *, fetcher: str = "requests", config: dict[str, Any] | None = None) -> SourceRecord:
-    if fetcher == "requests":
-        text, content_type = fetch_url_requests(url)
-    elif fetcher == "brightdata":
-        from .brightdata import fetch_url_brightdata
+    from .fetchers import get_fetcher
 
-        text, content_type = fetch_url_brightdata(url, config or {})
-    else:
-        raise DoxaError(f"Unknown URL fetcher '{fetcher}'. Use requests or brightdata.")
+    text, content_type = get_fetcher(fetcher)(url, config or {})
     return source_from_url_content(url, text, content_type)

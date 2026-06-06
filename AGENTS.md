@@ -125,32 +125,35 @@ index (`doxa index`); on a fresh base it just warns and falls back to keyword.
 Review or undo what's been ingested with `doxa sources list` and
 `doxa sources remove <id>`.
 
-## Tough Sources / BrightData
+## Tough Sources / Web Fetchers
 
-For an MCP-equipped agent, the easiest path is to fetch the bot-protected source
-with the harness's BrightData MCP, then pipe the returned markdown or text into
-doxa. This does not require a BrightData token inside doxa:
+The URL fetcher is pluggable (`--via`, or `sources.fetcher` default):
+`requests` (default), `jina` (free clean markdown), `firecrawl` (`FIRECRAWL_API_KEY`),
+`brightdata` (`BRIGHTDATA_API_TOKEN` + `BRIGHTDATA_ZONE`), or `command` (run any tool).
+
+```bash
+doxa ingest https://target.example --via jina        # free, good first try for bot-walled pages
+doxa ingest https://target.example --via brightdata  # needs BrightData env vars
+```
+
+For an MCP-equipped agent, two easy paths for bot-protected sources:
+
+1. Fetch with the harness's BrightData (or other) MCP and pipe the markdown in --
+   no token needed inside doxa:
 
 ```bash
 printf '%s' "$FETCHED_MARKDOWN" | doxa ingest - --title "Title" --url "https://target.example"
 ```
 
-For non-agent CLI use, doxa can call BrightData Web Unlocker directly:
-
-```bash
-export BRIGHTDATA_API_TOKEN=...
-export BRIGHTDATA_ZONE=...
-doxa ingest https://target.example --via brightdata
-```
-
-Config form:
+2. Bridge that MCP once via the `command` fetcher so every `doxa ingest <url>`
+   routes through it. Point `sources.command.argv` at a script that prints the
+   fetched markdown for `{url}`:
 
 ```yaml
 sources:
-  fetcher: brightdata   # route every URL ingest through BrightData (or pass --via brightdata per ingest)
-  brightdata:
-    api_token_env: BRIGHTDATA_API_TOKEN
-    zone_env: BRIGHTDATA_ZONE
+  fetcher: command
+  command:
+    argv: ["my-mcp-fetch", "{url}"]
 ```
 
 ## Install As A Harness Skill

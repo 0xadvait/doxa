@@ -404,35 +404,54 @@ Re-ingesting the same source is skipped by default (doxa detects it); pass
 and undo a mistake with `doxa sources remove <id>`. Ingest several at once with
 shell globs: `doxa ingest notes/*.md`.
 
-### Tough sources / BrightData
+### Web fetchers (pluggable)
 
-For an MCP-equipped agent, the easiest path is to fetch the tough source with
-the harness's BrightData MCP, then pipe the returned markdown or text into doxa.
-No BrightData token is needed inside doxa:
+doxa is not tied to one scraping method. The URL fetcher is pluggable: choose one
+per ingest with `--via`, or set `sources.fetcher` as the default.
+
+| Fetcher | Key? | What it does |
+| --- | --- | --- |
+| `requests` | No | Plain HTTP + stdlib HTML extraction (default). |
+| `jina` | Optional | [Jina Reader](https://jina.ai/reader/) -- clean markdown, free; set `JINA_API_KEY` for higher limits. |
+| `firecrawl` | Yes | [Firecrawl](https://firecrawl.dev) scrape API; needs `FIRECRAWL_API_KEY`. |
+| `brightdata` | Yes | BrightData Web Unlocker; needs `BRIGHTDATA_API_TOKEN` + `BRIGHTDATA_ZONE`. |
+| `command` | -- | Run ANY tool or MCP bridge that prints text to stdout. |
 
 ```bash
-printf '%s' "$FETCHED_MARKDOWN" | \
-  doxa ingest - --title "Article title" --url "https://target.example"
+doxa ingest https://target.example --via jina          # free, clean markdown
+doxa ingest https://target.example --via firecrawl     # FIRECRAWL_API_KEY
+doxa ingest https://target.example --via brightdata    # BRIGHTDATA_API_TOKEN + _ZONE
 ```
 
-For direct CLI use, configure BrightData Web Unlocker env vars and override the
-fetcher per ingest:
-
-```bash
-export BRIGHTDATA_API_TOKEN=...
-export BRIGHTDATA_ZONE=...
-doxa ingest https://target.example --via brightdata
-```
-
-Or set it in `doxa.yaml`:
+Set a default and per-fetcher options in `doxa.yaml`:
 
 ```yaml
 sources:
-  fetcher: brightdata
-  brightdata:
-    api_token_env: BRIGHTDATA_API_TOKEN
-    zone_env: BRIGHTDATA_ZONE
+  fetcher: jina            # default URL fetcher
+  jina: { api_key_env: JINA_API_KEY }
+  firecrawl: { api_key_env: FIRECRAWL_API_KEY }
+  brightdata: { api_token_env: BRIGHTDATA_API_TOKEN, zone_env: BRIGHTDATA_ZONE }
 ```
+
+**Wire any scraper or MCP** with the `command` fetcher: it runs your command
+(`{url}` is substituted) and ingests its stdout -- e.g. bridge a harness's
+BrightData MCP through a small script:
+
+```yaml
+sources:
+  fetcher: command
+  command:
+    argv: ["my-fetch", "{url}"]   # your script prints markdown/text to stdout
+```
+
+**MCP-equipped agents** can also skip fetchers and pipe pre-fetched markdown in:
+
+```bash
+printf '%s' "$FETCHED_MARKDOWN" | doxa ingest - --title "Title" --url "https://target.example"
+```
+
+Custom fetchers can be added in Python with
+`doxa.sources.fetchers.register_fetcher(name, fn)`.
 
 ---
 
