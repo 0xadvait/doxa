@@ -1,14 +1,21 @@
 # doxa
 
 ```text
-        .-"""-.
-      .'  .-.  '.        doxa
-     /   (o o)   \       little goddess of grounded belief
-    |   /  ^  \   |      she accepts no prophecy
-    |  |  DOXA |  |      without a quote
-     \  \_____/  /
-      '._     _.'        No quote, no claim.
-         `---'
+╔══════════════════════════════════════════════════════════════════════════════════════╗
+║██████╗  ██████╗ ██╗  ██╗ █████╗        DOXA // BELIEF ORACLE                         ║
+║██╔══██╗██╔═══██╗╚██╗██╔╝██╔══██╗       quote-first knowledge for agents              ║
+║██║  ██║██║   ██║ ╚███╔╝ ███████║       lens: custom  store: jsonl                    ║
+║██║  ██║██║   ██║ ██╔██╗ ██╔══██║       search: keyword / semantic / hybrid           ║
+║██████╔╝╚██████╔╝██╔╝ ██╗██║  ██║       verdict: NO QUOTE // NO CLAIM                 ║
+║╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝       unsourced prophecy stays dark                 ║
+║                                                                                      ║
+║        ⠀⠀⠀⢀⣠⣤⣤⣀⠀⠀⠀⠀      .    .:*        +       .                                   ║
+║        ⠀⣠⣾⣿⠟⠛⠻⣿⣷⣄⠀⠀      evidence rises like signal                                  ║
+║        ⢰⣿⣿⡏  ◉  ◉  ⢹⣿⣿⡆      belief == claim + receipts                              ║
+║        ⠘⣿⣿⣇   ▵    ⣸⣿⣿⠃      every answer carries a quote                            ║
+║        ⠀⠈⠻⣿⣷⣤⣴⣿⠟⠁⠀⠀      .       *      .:*     +                                    ║
+║        ⠀⠀⠀⠀⠉⠛⠛⠉⠀⠀⠀⠀      DOXA keeps the oracle honest                                ║
+╚══════════════════════════════════════════════════════════════════════════════════════╝
 ```
 
 Turn the sources you trust into a belief base you can query — where every answer is pinned to a **verbatim quote**, so the model can't make things up.
@@ -34,6 +41,7 @@ Most "chat with your notes" tools let an LLM paraphrase your sources and quietly
 
 ```bash
 python -m pip install -e .
+doxa banner
 doxa demo
 doxa query "self-reliance and conformity" --search keyword --top 2
 ```

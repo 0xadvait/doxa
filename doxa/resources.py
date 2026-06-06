@@ -64,3 +64,7 @@ def demo_data_dir() -> Path:
 
 def skill_text() -> str:
     return read_text("skill", "SKILL.md")
+
+
+def banner_text() -> str:
+    return read_text("banner.txt")
