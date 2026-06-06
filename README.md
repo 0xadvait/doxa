@@ -1,5 +1,16 @@
 # doxa
 
+```text
+        .-"""-.
+      .'  .-.  '.        doxa
+     /   (o o)   \       little goddess of grounded belief
+    |   /  ^  \   |      she accepts no prophecy
+    |  |  DOXA |  |      without a quote
+     \  \_____/  /
+      '._     _.'        No quote, no claim.
+         `---'
+```
+
 Turn the sources you trust into a belief base you can query — where every answer is pinned to a **verbatim quote**, so the model can't make things up.
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
@@ -8,8 +19,11 @@ Turn the sources you trust into a belief base you can query — where every answ
 Most "chat with your notes" tools let an LLM paraphrase your sources and quietly invent the rest. doxa doesn't. It mines essays, PDFs, web pages, and transcripts into two linked records — a concise **belief** and the **exact quote** that grounds it. You query the beliefs; every answer traces back to real source text. No quote, no claim.
 
 - **Verbatim-grounded** — every belief links to an exact source quote; quotes are never model-generated.
+- **Agent-ready custom knowledge bases** — install as a skill for Claude Code, Codex, Hermes, OpenCLAW, or another CLI-capable harness.
 - **Local and portable** — a plain JSONL source of truth you can read, diff, and re-index.
 - **Any lens, any model** — mine a source through your perspective, with codex-cli / claude-cli (no API key) or OpenAI / Fireworks / Anthropic.
+- **Quote-first retrieval** — keyword search indexes belief docs and quote docs, then folds quote hits back to linked beliefs.
+- **Domain preferences** — small 0-10 domain weights steer mining tags and retrieval boosts without changing JSONL schema. Alias terms keep older plain tags useful.
 - **Keyword → semantic → hybrid** — works with zero setup; add embeddings when you want them.
 
 **For AI agents:** start with [AGENTS.md](AGENTS.md); install as a harness skill via [skill/SKILL.md](skill/SKILL.md).
@@ -32,11 +46,11 @@ Example:
 
 ```text
 1. Personhood requires resisting social conformity.
-   stance=supports conviction=0.91 score=4.7910
+   stance=supports conviction=0.91 score=13.1877
    source=Self-Reliance / Ralph Waldo Emerson / 1841
    quote="Ralph Waldo Emerson: Whoso would be a man must be a nonconformist."
 2. Self-trust is a necessary starting point for thought and action.
-   stance=supports conviction=0.93 score=4.7006
+   stance=supports conviction=0.93 score=11.6399
    source=Self-Reliance / Ralph Waldo Emerson / 1841
    quote="Ralph Waldo Emerson: Trust thyself: every heart vibrates to that iron string."
 ```
@@ -254,6 +268,24 @@ doxa init ./fireworks.yaml \
 
 Use `--force` to overwrite an existing config.
 
+Domain preferences are optional and live in config as small 0-10 weights:
+
+```bash
+doxa domains
+doxa domains set technical 8
+doxa domains add finance 6
+doxa domains export
+```
+
+Domains are represented as ordinary `domain:<slug>` tags on beliefs and quotes,
+so old JSONL stores keep working. Retrieval also matches legacy plain tags through
+`preferences.domain_aliases`; for example, `--domain crypto` can boost records
+tagged `token-economics`, and `--domain relationships` can boost records tagged
+`trust`. Keyword search also uses active aliases as a low-weight candidate
+discovery leg after the literal query has matched at least one document; set
+`retrieval.domain_query_boost: 0` or pass `--no-domain-boost` for literal
+keyword-only candidates.
+
 ---
 
 ## Providers
@@ -385,11 +417,35 @@ doxa query "faction and liberty" --search keyword --limit 5
 doxa query "faction and liberty" --search keyword --top 5
 ```
 
+Keyword retrieval searches both belief documents and quote documents. A phrase
+that appears only in a quote can retrieve the linked belief, and the matched
+quote is displayed before other linked quotes.
+
+Domain-focused queries:
+
+```bash
+doxa query "incident response tradeoffs" --domain technical
+doxa query "market structure and incentives" --domains finance,policy
+doxa query "plain keyword behavior" --no-domain-boost
+```
+
 Use JSON output for downstream tools:
 
 ```bash
 doxa query "examined life" --json
 ```
+
+Use `--answer` when you want a terminal-facing answer instead of raw retrieval
+records:
+
+```bash
+doxa query "examined life" --search keyword --answer
+```
+
+`--answer` is local and deterministic. It smooths only the non-quote prose,
+omits retrieved beliefs that have no returned quote, and prints stored quote
+strings exactly as returned. The default plain retrieval output remains the raw
+record view, and `--json` output is unchanged for downstream tools.
 
 Only quote what doxa returns. If retrieval returns too little evidence, ingest
 more trusted sources rather than filling the gap yourself.
@@ -463,7 +519,15 @@ The eval checks:
 ## Install as an agent skill
 
 `doxa` ships a portable skill file for agent harnesses. The skill tells the
-agent to call the `doxa` CLI and treat linked quotes as ground truth.
+agent to call the `doxa` CLI and treat linked quotes as ground truth. It turns
+JSONL-backed corpora into custom knowledge bases for Claude Code, Codex, Hermes,
+OpenCLAW, and similar tools.
+
+Install the `doxa` CLI first. From a local checkout:
+
+```bash
+python -m pip install -e ".[all]"
+```
 
 ```bash
 doxa skill install --harness claude-code
@@ -478,6 +542,10 @@ Use `--scope project` for harnesses that support project-local skill folders:
 ```bash
 doxa skill install --harness codex --scope project
 ```
+
+Skill install overwrites the target `SKILL.md`.
+
+The skill contract is deliberately strict: No quote, no claim.
 
 ---
 
@@ -544,6 +612,11 @@ tags, and are safe for ingest and prompt construction.
 Stored source records keep the full text so quote faithfulness can be checked
 again later.
 
+Domain preferences use normal tags such as `domain:technical`, plus optional
+plain-tag aliases under `preferences.domain_aliases`; no schema migration is
+required. Keyword search can use active aliases for low-weight candidate
+discovery before final ranking.
+
 ---
 
 ## FAQ
@@ -595,6 +668,7 @@ Run:
 python -m pytest -q
 doxa demo
 doxa query "self-reliance and conformity" --search keyword
+doxa query "self-reliance and conformity" --search keyword --answer
 ```
 
 Licensed under the MIT License. See [LICENSE](LICENSE).

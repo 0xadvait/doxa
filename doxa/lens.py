@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .domains import domain_prompt_lines
+
 
 DEFAULT_LENS_NAME = "beliefs"
 DEFAULT_LENS_QUESTION = "What beliefs does this source express?"
@@ -50,6 +52,7 @@ def lens_text(config: dict[str, Any]) -> str:
             f"Guiding question: {lens.get('question', DEFAULT_LENS_QUESTION)}",
             f"Allowed stances: {stances or ', '.join(DEFAULT_STANCES)}",
             f"Suggested tags: {tags}",
+            *domain_prompt_lines(config),
         ]
     )
 
@@ -76,6 +79,7 @@ Rules:
 - Every quote.quote must be copied verbatim from Source text.
 - Each belief must be linked by at least one quote.belief_ids entry.
 - Prefer concise beliefs that state a stance, not a summary paragraph.
+- Use domain:<slug> tags only when the source text clearly supports that domain classification.
 - conviction is a number from 0 to 1 based only on how directly the quote supports the belief.
 - Return strict JSON with top-level keys "beliefs" and "quotes".
 - Use this shape:

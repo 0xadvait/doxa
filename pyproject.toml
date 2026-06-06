@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "doxa"
 version = "0.1.0"
-description = "A verbatim-grounded belief engine for sources you trust."
+description = "An agent skill for custom verbatim-grounded belief bases."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "doxa contributors"}]
-keywords = ["beliefs", "retrieval", "quotes", "rag", "knowledge-base"]
+keywords = ["agent", "agent-skill", "beliefs", "retrieval", "quotes", "rag", "knowledge-base", "grounded-ai", "citation"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
@@ -47,6 +47,14 @@ doxa = "doxa.cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["doxa*"]
+
+[tool.setuptools.package-data]
+doxa = [
+  "_assets/**/*.jsonl",
+  "_assets/**/*.md",
+  "_assets/**/*.txt",
+  "_assets/**/*.yaml",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

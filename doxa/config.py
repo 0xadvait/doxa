@@ -69,9 +69,102 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "retrieval": {
         "default_search": "keyword",
         "limit": 5,
+        "candidate_limit": 50,
+        "quote_boost": 2.0,
+        "domain_query_boost": 0.25,
+        "max_quotes_per_result": None,
         "bm25_k1": 1.5,
         "bm25_b": 0.75,
         "rrf_k": 60,
+    },
+    "preferences": {
+        "domains": {
+            "general": 2,
+            "research": 3,
+            "technical": 3,
+            "policy": 2,
+            "creative": 2,
+        },
+        "domain_aliases": {
+            "ai": ["artificial-intelligence", "agents", "llm", "llms", "machine-learning", "ml", "models"],
+            "biotech": ["bio", "biology", "clinical", "genomics", "health", "medical", "medicine", "pharma"],
+            "creative": [
+                "art",
+                "aesthetics",
+                "culture",
+                "design",
+                "myth",
+                "myths",
+                "religion",
+                "storytelling",
+                "taste",
+                "writing",
+            ],
+            "crypto": ["blockchain", "defi", "protocols", "token-economics", "tokenomics", "tokens", "web3"],
+            "finance": ["economics", "finance", "investing", "macro", "markets", "money"],
+            "general": ["misc", "miscellaneous"],
+            "life-advice": [
+                "advice",
+                "agency",
+                "ambition",
+                "career",
+                "decisions",
+                "decision-making",
+                "habits",
+                "identity",
+                "judgment",
+                "judgement",
+                "mindset",
+                "resilience",
+                "self-improvement",
+                "setbacks",
+                "uncertainty",
+            ],
+            "policy": ["governance", "government", "law", "legal", "policy", "regulation"],
+            "relationships": [
+                "communication",
+                "dating",
+                "empathy",
+                "family",
+                "feedback",
+                "friendship",
+                "judgement",
+                "judgment",
+                "love",
+                "open-mindedness",
+                "partner",
+                "relationship",
+                "relationships",
+                "signals",
+                "social",
+                "trust",
+            ],
+            "research": ["benchmarks", "evidence", "experiments", "papers", "research", "science"],
+            "startups": [
+                "company-building",
+                "founder",
+                "founders",
+                "fundraising",
+                "growth",
+                "hiring",
+                "startup",
+                "startups",
+            ],
+            "technical": [
+                "architecture",
+                "devtools",
+                "engineering",
+                "incident-response",
+                "infrastructure",
+                "programming",
+                "security",
+                "software",
+                "software-engineering",
+                "systems",
+                "verification",
+            ],
+            "venture-capital": ["fundraising", "funds", "investment", "investing", "term-sheets", "vc", "venture"],
+        },
     },
     "embeddings": {
         "model": "BAAI/bge-small-en-v1.5",
@@ -132,8 +225,9 @@ def load_config(path: str | Path | None = None, *, allow_demo_default: bool = Tr
         config["_config_path"] = ""
         config["_base_dir"] = str(Path.cwd())
         if allow_demo_default:
-            demo_dir = PROJECT_ROOT / "examples" / "demo" / "data"
-            config["data"]["dir"] = str(demo_dir)
+            from .resources import demo_data_dir
+
+            config["data"]["dir"] = str(demo_data_dir())
     return config
 
 

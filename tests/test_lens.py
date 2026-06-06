@@ -18,3 +18,16 @@ def test_prompt_build_accepts_string_lens() -> None:
     )
     assert "Extract beliefs about courage." in user
     assert "Source text:" in user
+
+
+def test_prompt_includes_domain_attention() -> None:
+    _, user = build_extraction_prompt(
+        {
+            "lens": "Extract technical operating beliefs.",
+            "preferences": {"domains": {"technical": 8, "policy": 0}},
+        },
+        {"title": "Example"},
+        "Reliable systems need clear ownership.",
+    )
+    assert "Domain preferences: domain:technical=8/10" in user
+    assert "domain:<slug>" in user

@@ -91,9 +91,34 @@ retrieval:
   # keyword works with zero infrastructure. semantic needs embeddings+postgres.
   default_search: keyword
   limit: 5
+  # Overfetch before final ranking so rare quote hits and domain boosts can surface.
+  candidate_limit: 50
+  # Quote document hits are folded back to linked beliefs with this multiplier.
+  quote_boost: 2.0
+  # Active domain aliases add a small candidate-discovery BM25 leg before slicing.
+  # Set to 0, or pass --no-domain-boost, for literal keyword-only candidates.
+  domain_query_boost: 0.25
+  # Display cap; matched quote hits are shown before other linked quotes.
+  max_quotes_per_result: null  # set an integer to cap displayed/returned quotes per belief
   bm25_k1: 1.5
   bm25_b: 0.75
   rrf_k: 60
+
+preferences:
+  # Domain weights run from 0 to 10. Matching domain:<slug> tags get a small
+  # retrieval boost and are also shown to the mining prompt as tagging hints.
+  domains:
+    general: 2
+    research: 3
+    technical: 3
+    policy: 2
+    creative: 2
+  # Aliases extend retrieval boosts to older plain tags without changing JSONL.
+  domain_aliases:
+    crypto: [token-economics, tokenomics, tokens, web3, blockchain, defi]
+    startups: [startup, startups, founders, company-building]
+    relationships: [trust, communication, friendship]
+    creative: [design, taste, myths, religion, writing]
 
 embeddings:
   # Used by doxa[embeddings] for semantic indexing.

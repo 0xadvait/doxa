@@ -5,15 +5,27 @@ from __future__ import annotations
 import argparse
 from copy import deepcopy
 import json
-import shutil
 import sys
 from pathlib import Path
 from typing import Any
 
-from .config import DEFAULT_CONFIG, PROJECT_ROOT, data_dir, load_config
+from .answer import render_terminal_answer
+from .config import DEFAULT_CONFIG, data_dir, load_config
+from .domains import (
+    add_domain_weight,
+    chart as domain_chart,
+    domain_weights,
+    edit_domain_weights,
+    export_domain_weights,
+    parse_domain_selectors,
+    remove_domain_weight,
+    reset_domain_weights,
+    set_domain_weight,
+)
 from .eval import faithfulness_report
 from .mine import mine_source
 from .retrieve import search
+from .resources import demo_config_path, skill_text
 from .schema import DoxaError, RetrievalResult
 from .sources import load_source
 from .store import JsonlStore, index_postgres
@@ -269,7 +281,15 @@ def _format_result(result: RetrievalResult, index: int) -> str:
 
 def cmd_query(args: argparse.Namespace) -> int:
     config = load_config(args.config)
-    results, warnings = search(args.query, config, search_type=args.search, limit=args.limit)
+    domains = parse_domain_selectors(args.domain, args.domains)
+    results, warnings = search(
+        args.query,
+        config,
+        search_type=args.search,
+        limit=args.limit,
+        domains=domains,
+        domain_boost=not args.no_domain_boost,
+    )
     for warning in warnings:
         print(f"warning: {warning}", file=sys.stderr)
     if args.json:
@@ -277,6 +297,9 @@ def cmd_query(args: argparse.Namespace) -> int:
         return 0
     if not results:
         print("No matching beliefs found.")
+        return 0
+    if args.answer:
+        print(render_terminal_answer(args.query, results))
         return 0
     for index, result in enumerate(results, start=1):
         print(_format_result(result, index))
@@ -301,7 +324,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
 
 
 def cmd_demo(args: argparse.Namespace) -> int:
-    demo_config = load_config(PROJECT_ROOT / "examples" / "demo" / "doxa.yaml", allow_demo_default=False)
+    demo_config = load_config(demo_config_path(), allow_demo_default=False)
     demo_data = data_dir(demo_config)
     store = JsonlStore(demo_config)
     beliefs = store.beliefs()
@@ -319,6 +342,35 @@ def cmd_demo(args: argparse.Namespace) -> int:
         print(f"Sample query: {args.query}")
         for index, result in enumerate(results, start=1):
             print(_format_result(result, index))
+    return 0
+
+
+def cmd_domains(args: argparse.Namespace) -> int:
+    command = getattr(args, "domain_command", None) or "view"
+    config_path = getattr(args, "config", None)
+    if command == "view":
+        config = load_config(config_path, allow_demo_default=False)
+        print(domain_chart(domain_weights(config)))
+        return 0
+    if command == "export":
+        config = load_config(config_path, allow_demo_default=False)
+        print(export_domain_weights(domain_weights(config), as_json=args.json))
+        return 0
+    if command == "set":
+        path = set_domain_weight(config_path, args.slug, args.weight)
+    elif command == "add":
+        path = add_domain_weight(config_path, args.slug, args.weight)
+    elif command == "remove":
+        path = remove_domain_weight(config_path, args.slug)
+    elif command == "reset":
+        path = reset_domain_weights(config_path)
+    elif command == "edit":
+        path = edit_domain_weights(config_path)
+    else:  # pragma: no cover - argparse constrains this
+        raise DoxaError(f"Unknown domains command: {command}")
+    print(f"Updated domain preferences: {path}")
+    config = load_config(path, allow_demo_default=False)
+    print(domain_chart(domain_weights(config)))
     return 0
 
 
@@ -342,13 +394,6 @@ HARNESS_PATHS = {
 }
 
 
-def _skill_source() -> Path:
-    source = PROJECT_ROOT / "skill" / "SKILL.md"
-    if not source.exists():
-        raise DoxaError(f"Could not find bundled skill at {source}")
-    return source
-
-
 def cmd_skill_install(args: argparse.Namespace) -> int:
     if args.dest:
         dest_dir = Path(args.dest).expanduser()
@@ -361,7 +406,7 @@ def cmd_skill_install(args: argparse.Namespace) -> int:
         dest_dir = mapping[args.scope].expanduser()
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest_file = dest_dir / "SKILL.md"
-    shutil.copyfile(_skill_source(), dest_file)
+    dest_file.write_text(skill_text(), encoding="utf-8")
     print(f"Installed doxa skill: {dest_file}")
     if args.harness == "generic":
         print("Point your agent harness at that directory and ensure the `doxa` CLI is on PATH.")
@@ -406,6 +451,10 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("--config")
     query.add_argument("--search", choices=["keyword", "semantic", "hybrid"], default="keyword")
     query.add_argument("--limit", "--top", dest="limit", type=int, default=5)
+    query.add_argument("--domain", action="append", default=[], help="Boost results tagged with domain:<slug>. Repeatable.")
+    query.add_argument("--domains", default="", help="Comma-separated domain slugs to boost.")
+    query.add_argument("--no-domain-boost", action="store_true", help="Disable configured domain preference boosts.")
+    query.add_argument("--answer", action="store_true", help="Render a local humanized terminal answer.")
     query.add_argument("--json", action="store_true")
     query.set_defaults(func=cmd_query)
 
@@ -418,6 +467,38 @@ def build_parser() -> argparse.ArgumentParser:
     demo.add_argument("--query", default="")
     demo.add_argument("--limit", type=int, default=3)
     demo.set_defaults(func=cmd_demo)
+
+    domains = subparsers.add_parser("domains", help="View or edit domain retrieval preferences.")
+    domains.add_argument("--config")
+    domains.set_defaults(func=cmd_domains)
+    domain_sub = domains.add_subparsers(dest="domain_command")
+    view = domain_sub.add_parser("view", help="Show the terminal domain-weight chart.")
+    view.add_argument("--config", default=argparse.SUPPRESS)
+    view.set_defaults(func=cmd_domains)
+    set_parser = domain_sub.add_parser("set", help="Set a domain weight from 0 to 10.")
+    set_parser.add_argument("slug")
+    set_parser.add_argument("weight", type=int)
+    set_parser.add_argument("--config", default=argparse.SUPPRESS)
+    set_parser.set_defaults(func=cmd_domains)
+    add = domain_sub.add_parser("add", help="Add a new domain weight.")
+    add.add_argument("slug")
+    add.add_argument("weight", nargs="?", type=int, default=6)
+    add.add_argument("--config", default=argparse.SUPPRESS)
+    add.set_defaults(func=cmd_domains)
+    remove = domain_sub.add_parser("remove", help="Remove a domain weight.")
+    remove.add_argument("slug")
+    remove.add_argument("--config", default=argparse.SUPPRESS)
+    remove.set_defaults(func=cmd_domains)
+    reset = domain_sub.add_parser("reset", help="Reset domain weights to doxa defaults.")
+    reset.add_argument("--config", default=argparse.SUPPRESS)
+    reset.set_defaults(func=cmd_domains)
+    export = domain_sub.add_parser("export", help="Export domain weights as YAML or JSON.")
+    export.add_argument("--config", default=argparse.SUPPRESS)
+    export.add_argument("--json", action="store_true")
+    export.set_defaults(func=cmd_domains)
+    edit = domain_sub.add_parser("edit", help="Edit domain weights in $VISUAL or $EDITOR.")
+    edit.add_argument("--config", default=argparse.SUPPRESS)
+    edit.set_defaults(func=cmd_domains)
 
     skill = subparsers.add_parser("skill", help="Install or inspect the portable agent skill.")
     skill_sub = skill.add_subparsers(dest="skill_command", required=True)
