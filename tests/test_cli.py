@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 
 from doxa.cli import _normalize_provider, _resolve_init_dest, build_parser, main
 from doxa.cli import cmd_query
@@ -9,6 +10,13 @@ from doxa.config import load_config
 from doxa.domains import domain_weights
 from doxa.resources import banner_text
 from doxa.schema import Belief, Quote, RetrievalResult, SourceRef
+
+
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    return ANSI_RE.sub("", text)
 
 
 def test_query_top_alias_sets_limit() -> None:
@@ -54,6 +62,25 @@ def test_ingest_accepts_stdin_metadata_and_fetcher_override() -> None:
 
 def test_banner_command_prints_bundled_banner(capsys) -> None:
     code = main(["banner"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.out == banner_text()
+    assert captured.err == ""
+
+
+def test_banner_color_always_adds_ansi_without_changing_text(capsys) -> None:
+    code = main(["banner", "--color", "always"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "\x1b[" in captured.out
+    assert _strip_ansi(captured.out) == banner_text()
+    assert captured.err == ""
+
+
+def test_banner_no_color_alias_prints_plain_banner(capsys) -> None:
+    code = main(["banner", "--no-color"])
 
     captured = capsys.readouterr()
     assert code == 0

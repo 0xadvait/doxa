@@ -1,22 +1,6 @@
-# doxa
+![Doxa belief oracle banner](assets/banner.svg)
 
-```text
-╔══════════════════════════════════════════════════════════════════════════════════════╗
-║██████╗  ██████╗ ██╗  ██╗ █████╗        DOXA // BELIEF ORACLE                         ║
-║██╔══██╗██╔═══██╗╚██╗██╔╝██╔══██╗       quote-first knowledge for agents              ║
-║██║  ██║██║   ██║ ╚███╔╝ ███████║       lens: custom  store: jsonl                    ║
-║██║  ██║██║   ██║ ██╔██╗ ██╔══██║       search: keyword / semantic / hybrid           ║
-║██████╔╝╚██████╔╝██╔╝ ██╗██║  ██║       verdict: NO QUOTE // NO CLAIM                 ║
-║╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝       unsourced prophecy stays dark                 ║
-║                                                                                      ║
-║           ⢀⣠⣤⣤⣀          .    .:*        +       .                                   ║
-║         ⣠⣾⣿⠟⠛⠻⣿⣷⣄        evidence rises like signal                                  ║
-║        ⢰⣿⣿⡏  ◉  ◉  ⢹⣿⣿⡆      belief == claim + receipts                              ║
-║        ⠘⣿⣿⣇   ▵    ⣸⣿⣿⠃      every answer carries a quote                            ║
-║         ⠈⠻⣿⣷⣤⣴⣿⠟⠁        .       *      .:*     +                                    ║
-║            ⠉⠛⠛⠉          DOXA keeps the oracle honest                                ║
-╚══════════════════════════════════════════════════════════════════════════════════════╝
-```
+# doxa
 
 Turn the sources you trust into a belief base you can query — where every answer is pinned to a **verbatim quote**, so the model can't make things up.
 
@@ -41,10 +25,14 @@ Most "chat with your notes" tools let an LLM paraphrase your sources and quietly
 
 ```bash
 python -m pip install -e .
-doxa banner
+doxa banner --color auto
 doxa demo
 doxa query "self-reliance and conformity" --search keyword --top 2
 ```
+
+`doxa banner` defaults to `--color auto`: ANSI accents appear in an interactive
+terminal, while pipes, captures, and test runs stay plain. Use `--color always`
+or `--color never` to override it.
 
 With no `doxa.yaml` in the current directory, `doxa query` uses the bundled
 public-domain demo data from Emerson's "Self-Reliance", Plato's "Apology", and

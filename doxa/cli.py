@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .answer import render_terminal_answer
+from .banner import render_banner
 from .config import DEFAULT_CONFIG, data_dir, load_config
 from .domains import (
     add_domain_weight,
@@ -25,7 +26,7 @@ from .domains import (
 from .eval import faithfulness_report
 from .mine import mine_source
 from .retrieve import search
-from .resources import banner_text, demo_config_path, skill_text
+from .resources import demo_config_path, skill_text
 from .schema import DoxaError, RetrievalResult
 from .sources import load_source
 from .store import JsonlStore, index_postgres
@@ -346,7 +347,7 @@ def cmd_demo(args: argparse.Namespace) -> int:
 
 
 def cmd_banner(args: argparse.Namespace) -> int:
-    sys.stdout.write(banner_text())
+    sys.stdout.write(render_banner(color=args.color, stream=sys.stdout))
     return 0
 
 
@@ -474,6 +475,14 @@ def build_parser() -> argparse.ArgumentParser:
     demo.set_defaults(func=cmd_demo)
 
     banner = subparsers.add_parser("banner", help="Print the bundled doxa terminal banner.")
+    banner.add_argument(
+        "--color",
+        choices=["auto", "always", "never"],
+        default="auto",
+        help="Control ANSI color output. auto colors only when stdout is a TTY.",
+    )
+    banner.add_argument("--no-color", action="store_const", dest="color", const="never", help="Alias for --color never.")
+    banner.add_argument("--ansi", action="store_const", dest="color", const="always", help="Alias for --color always.")
     banner.set_defaults(func=cmd_banner)
 
     domains = subparsers.add_parser("domains", help="View or edit domain retrieval preferences.")

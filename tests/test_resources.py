@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from doxa.config import load_config
 from doxa.resources import banner_text, demo_config_path, demo_data_dir, skill_text
 
@@ -26,3 +28,14 @@ def test_bundled_banner_resource_is_loadable() -> None:
     assert "DOXA // BELIEF ORACLE" in text
     assert "NO QUOTE // NO CLAIM" in text
     assert all(len(line) < 100 for line in lines)
+
+
+def test_readme_svg_banner_exists_and_is_github_safe() -> None:
+    svg_path = Path(__file__).resolve().parents[1] / "assets" / "banner.svg"
+    assert svg_path.exists()
+
+    svg = svg_path.read_text(encoding="utf-8")
+    assert svg.startswith("<svg ")
+    assert "NO QUOTE // NO CLAIM" in svg
+    assert "<script" not in svg.lower()
+    assert Path.home().as_posix() not in svg
