@@ -141,6 +141,118 @@ def test_keyword_search_preserves_all_linked_quotes_when_uncapped(tmp_path: Path
     assert [quote.id for quote in results[0].quotes] == ["q0", "q1", "q2", "q3", "q4"]
 
 
+def test_keyword_search_does_not_return_domain_only_no_match(tmp_path: Path) -> None:
+    source = _source()
+    config = _write_store(
+        tmp_path,
+        beliefs=[
+            {
+                "id": "b_domain",
+                "belief": "Operational runbooks should be maintained with technical precision.",
+                "reasoning": "The domain tag should not make this a match by itself.",
+                "stance": "supports",
+                "conviction": 0.8,
+                "tags": ["domain:technical"],
+                "source": source,
+            }
+        ],
+        quotes=[
+            {
+                "id": "q_domain",
+                "quote": "Precise runbooks reduce operational ambiguity.",
+                "speaker": "",
+                "source": source,
+                "context": "",
+                "tags": ["domain:technical"],
+                "belief_ids": ["b_domain"],
+            }
+        ],
+    )
+
+    results, warnings = search("zephyrless arglebargle", config, search_type="keyword", limit=3, domains=["technical"])
+
+    assert warnings == []
+    assert results == []
+
+
+def test_keyword_candidate_limit_counts_unique_beliefs_after_quote_grouping(tmp_path: Path) -> None:
+    source = _source()
+    many_quotes = [
+        {
+            "id": f"q_many_{index}",
+            "quote": "monopoly needle phrase",
+            "speaker": "",
+            "source": source,
+            "context": "",
+            "tags": [],
+            "belief_ids": ["b_many"],
+        }
+        for index in range(60)
+    ]
+    config = _write_store(
+        tmp_path,
+        beliefs=[
+            {
+                "id": "b_many",
+                "belief": "One belief has many matching quote documents.",
+                "reasoning": "It should rank first without crowding out every other belief candidate.",
+                "stance": "supports",
+                "conviction": 0.8,
+                "tags": [],
+                "source": source,
+            },
+            {
+                "id": "b_two",
+                "belief": "A second belief also has a matching quote.",
+                "reasoning": "It should remain eligible after quote document grouping.",
+                "stance": "supports",
+                "conviction": 0.8,
+                "tags": [],
+                "source": source,
+            },
+            {
+                "id": "b_three",
+                "belief": "A third belief also has a matching quote.",
+                "reasoning": "It should remain eligible after quote document grouping.",
+                "stance": "supports",
+                "conviction": 0.8,
+                "tags": [],
+                "source": source,
+            },
+        ],
+        quotes=[
+            *many_quotes,
+            {
+                "id": "q_two",
+                "quote": "monopoly needle phrase",
+                "speaker": "",
+                "source": source,
+                "context": "",
+                "tags": [],
+                "belief_ids": ["b_two"],
+            },
+            {
+                "id": "q_three",
+                "quote": "monopoly needle phrase",
+                "speaker": "",
+                "source": source,
+                "context": "",
+                "tags": [],
+                "belief_ids": ["b_three"],
+            },
+        ],
+    )
+    config["retrieval"]["max_quotes_per_result"] = 3
+
+    results, warnings = search("monopoly needle phrase", config, search_type="keyword", limit=3)
+
+    assert warnings == []
+    assert [result.belief.id for result in results] == ["b_many", "b_two", "b_three"]
+    assert [quote.id for quote in results[0].quotes] == ["q_many_0", "q_many_1", "q_many_2"]
+    assert [quote.id for quote in results[1].quotes] == ["q_two"]
+    assert [quote.id for quote in results[2].quotes] == ["q_three"]
+
+
 def test_domain_boost_can_promote_matching_domain_tag(tmp_path: Path) -> None:
     source = _source()
     config = _write_store(

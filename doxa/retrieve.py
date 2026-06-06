@@ -196,8 +196,11 @@ def keyword_search(
         return []
     candidate_limit = max(candidate_limit or limit, limit)
     doc_terms = [tokenize(doc.text) for doc in docs]
+    literal_doc_scores = _bm25_scores(query_terms, doc_terms, k1=k1, b=b)
+    if not literal_doc_scores:
+        return []
     combined_doc_scores: Counter[int] = Counter()
-    for doc_index, raw_score in _bm25_scores(query_terms, doc_terms, k1=k1, b=b):
+    for doc_index, raw_score in literal_doc_scores:
         combined_doc_scores[doc_index] += raw_score
     domain_query_boost = max(float(store.config.get("retrieval", {}).get("domain_query_boost", 0.25)), 0.0)
     if domain_boost and domain_query_boost > 0:
@@ -208,7 +211,7 @@ def keyword_search(
             b=b,
         ):
             combined_doc_scores[doc_index] += raw_score * domain_query_boost
-    doc_scores = sorted(combined_doc_scores.items(), key=lambda item: (-item[1], item[0]))[:candidate_limit]
+    doc_scores = sorted(combined_doc_scores.items(), key=lambda item: (-item[1], item[0]))
     belief_scores: Counter[str] = Counter()
     matched_quote_scores: dict[str, Counter[str]] = {}
     for doc_index, raw_score in doc_scores:
@@ -242,8 +245,9 @@ def keyword_search(
         ordered_quotes = [*matched_quotes, *remaining_quotes]
         grouped.append(RetrievalResult(belief=by_belief[belief_id], quotes=ordered_quotes, score=float(score)))
     grouped.sort(key=lambda result: (-result.score, belief_order.get(result.belief.id, 0)))
+    candidates = grouped[:candidate_limit]
     return _rank_results(
-        grouped,
+        candidates,
         store.config,
         limit=limit,
         max_quotes_per_result=max_quotes_per_result,

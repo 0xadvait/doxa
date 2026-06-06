@@ -13,30 +13,32 @@ custom knowledge base. No quote, no claim.
 Run:
 
 ```bash
-doxa query "<user question>" --search hybrid
+doxa query "<user question>" --search keyword
 ```
 
 For a final user-facing response, prefer the local answer renderer:
 
 ```bash
-doxa query "<user question>" --search hybrid --answer
+doxa query "<user question>" --search keyword --answer
 ```
 
 Use domain focus only when it is clearly relevant to the user's question:
 
 ```bash
-doxa query "<user question>" --search hybrid --domain technical
-doxa query "<user question>" --search hybrid --domains policy,finance
+doxa query "<user question>" --search keyword --domain technical
+doxa query "<user question>" --search keyword --domains policy,finance
 ```
+
+Keyword search is the zero-setup default. If the project has configured
+semantic search, `--search hybrid` may be used; if hybrid reports that the
+semantic leg is unavailable and falls back to keyword, continue with the
+returned keyword-grounded results.
 
 Read the returned beliefs and verbatim quotes as the only ground truth. Answer
 from those returned records. Cite or include the exact quotes when they matter.
 Humanize only the surrounding prose. Never alter the bytes, punctuation,
 capitalization, or whitespace inside a returned quote span, and never invent a
 quote, attribution, source, or belief that was not returned by the CLI.
-
-If hybrid search reports that the semantic leg is unavailable and falls back to
-keyword, continue with the returned keyword-grounded results.
 
 ## Grow the belief base
 

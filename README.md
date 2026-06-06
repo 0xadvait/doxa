@@ -282,8 +282,9 @@ so old JSONL stores keep working. Retrieval also matches legacy plain tags throu
 `preferences.domain_aliases`; for example, `--domain crypto` can boost records
 tagged `token-economics`, and `--domain relationships` can boost records tagged
 `trust`. Keyword search also uses active aliases as a low-weight candidate
-discovery leg; set `retrieval.domain_query_boost: 0` or pass `--no-domain-boost`
-for literal keyword-only candidates.
+discovery leg after the literal query has matched at least one document; set
+`retrieval.domain_query_boost: 0` or pass `--no-domain-boost` for literal
+keyword-only candidates.
 
 ---
 
@@ -522,6 +523,12 @@ agent to call the `doxa` CLI and treat linked quotes as ground truth. It turns
 JSONL-backed corpora into custom knowledge bases for Claude Code, Codex, Hermes,
 OpenCLAW, and similar tools.
 
+Install the `doxa` CLI first. From a local checkout:
+
+```bash
+python -m pip install -e ".[all]"
+```
+
 ```bash
 doxa skill install --harness claude-code
 doxa skill install --harness codex
@@ -535,6 +542,8 @@ Use `--scope project` for harnesses that support project-local skill folders:
 ```bash
 doxa skill install --harness codex --scope project
 ```
+
+Skill install overwrites the target `SKILL.md`.
 
 The skill contract is deliberately strict: No quote, no claim.
 

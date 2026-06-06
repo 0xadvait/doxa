@@ -48,13 +48,14 @@ retrieval:
   rrf_k: 60
 ```
 
-`candidate_limit` overfetches before final ranking. `quote_boost` helps a rare
-phrase in a quote surface the linked belief. `domain_query_boost` adds a small
-active-domain alias leg before keyword candidate slicing, so legacy plain tags
-can be discovered even when the literal query does not contain those tag terms;
-set it to `0` for literal keyword-only candidate selection. `max_quotes_per_result`
-can cap linked quotes when you want compact output; leave it `null` to preserve
-every linked quote in text and JSON output.
+`candidate_limit` overfetches unique beliefs before final ranking. `quote_boost`
+helps a rare phrase in a quote surface the linked belief. `domain_query_boost`
+adds a small active-domain alias leg after the literal query has matched at
+least one document, so legacy plain tags can supplement candidate discovery
+without creating pure domain-only matches; set it to `0` for literal
+keyword-only candidate selection. `max_quotes_per_result` can cap linked quotes
+when you want compact output; leave it `null` to preserve every linked quote in
+text and JSON output.
 
 Domain preferences:
 
