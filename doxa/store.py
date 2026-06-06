@@ -70,6 +70,28 @@ class JsonlStore:
         if sources:
             append_jsonl(self.sources_path, [source.to_dict() for source in sources])
 
+    def has_source(self, source_id: str) -> bool:
+        return any(source.id == source_id for source in self.sources())
+
+    def remove_source(self, source_id: str) -> dict[str, int]:
+        """Delete a source and every belief/quote derived from it; return removed counts."""
+        sources = self.sources()
+        target = next((source for source in sources if source.id == source_id), None)
+        if target is None:
+            raise DoxaError(f"No ingested source with id '{source_id}'. Run `doxa sources list`.")
+        key = (target.title, target.url)
+        beliefs = self.beliefs()
+        quotes = self.quotes()
+        kept_beliefs = [b for b in beliefs if (b.source.title, b.source.url) != key]
+        kept_quotes = [q for q in quotes if (q.source.title, q.source.url) != key]
+        kept_sources = [s for s in sources if s.id != source_id]
+        self.write_all(kept_beliefs, kept_quotes, kept_sources)
+        return {
+            "beliefs": len(beliefs) - len(kept_beliefs),
+            "quotes": len(quotes) - len(kept_quotes),
+            "sources": 1,
+        }
+
     def linked_results(self, scored_beliefs: list[tuple[Belief, float]]) -> list[RetrievalResult]:
         quotes = self.quotes()
         by_belief: dict[str, list[Quote]] = {}
@@ -111,10 +133,11 @@ def index_postgres(config: dict[str, Any]) -> dict[str, int]:
         raise DoxaError(f"No beliefs found at {store.beliefs_path}")
     prefix = str(config.get("postgres", {}).get("table_prefix", "doxa"))
     dimension = int(config.get("embeddings", {}).get("dimension", 384))
+    # Open the DB connection before embedding so DSN/connectivity errors fail fast,
+    # rather than after a slow embed (which can download a model on first run).
+    conn = postgres_connect(config)
     texts = [belief.belief + "\n" + belief.reasoning for belief in beliefs]
     vectors = embed_texts(texts, config)
-
-    conn = postgres_connect(config)
     try:
         with conn, conn.cursor() as cur:
             cur.execute("CREATE EXTENSION IF NOT EXISTS vector")

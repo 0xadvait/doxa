@@ -11,8 +11,13 @@ Run these from the repo root:
 ```bash
 python --version
 command -v doxa
-doxa --help
+doxa status   # config path, data dir, belief/quote counts, provider, semantic on/off
+doxa demo     # smoke-test on bundled data, zero config
 ```
+
+`doxa status` answers most "where do things stand" questions in one call. If it
+reports `beliefs: 0`, the base is empty -- offer to `doxa ingest` a source rather
+than querying. Re-run `doxa status` any time to recheck state.
 
 If `doxa` is missing, install the local checkout:
 
@@ -35,14 +40,16 @@ command -v codex
 command -v claude
 ```
 
-Check optional semantic search infrastructure:
+Only if `doxa status` shows `semantic: off` and the user wants semantic/hybrid
+search, set up Postgres + pgvector:
 
 ```bash
 echo "$DOXA_POSTGRES_DSN"
-psql "$DOXA_POSTGRES_DSN" -c "CREATE EXTENSION IF NOT EXISTS vector;"
+psql "$DOXA_POSTGRES_DSN" -c "CREATE EXTENSION IF NOT EXISTS vector;"   # needs a superuser/owner role
+doxa index
 ```
 
-If Postgres or pgvector is unavailable, use keyword search until the user wants
+Otherwise use keyword search (the zero-setup default) until the user asks for
 semantic or hybrid retrieval.
 
 ## Ask
@@ -106,14 +113,17 @@ Show the verbatim guarantee:
 doxa eval
 ```
 
-Query it:
+Query it (keyword is the zero-setup default):
 
 ```bash
-doxa query "<user question>" --search hybrid
+doxa query "<user question>"
 ```
 
-If hybrid search warns that semantic search is unavailable, continue with the
-returned keyword-backed results or help set up Postgres/pgvector.
+Use `--search hybrid` only after the user has built the optional Postgres/pgvector
+index (`doxa index`); on a fresh base it just warns and falls back to keyword.
+
+Review or undo what's been ingested with `doxa sources list` and
+`doxa sources remove <id>`.
 
 ## Tough Sources / BrightData
 
@@ -137,7 +147,7 @@ Config form:
 
 ```yaml
 sources:
-  fetcher: requests
+  fetcher: brightdata   # route every URL ingest through BrightData (or pass --via brightdata per ingest)
   brightdata:
     api_token_env: BRIGHTDATA_API_TOKEN
     zone_env: BRIGHTDATA_ZONE

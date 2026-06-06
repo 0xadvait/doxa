@@ -72,7 +72,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "candidate_limit": 50,
         "quote_boost": 2.0,
         "domain_query_boost": 0.25,
-        "max_quotes_per_result": None,
+        "max_quotes_per_result": 2,
         "bm25_k1": 1.5,
         "bm25_b": 0.75,
         "rrf_k": 60,

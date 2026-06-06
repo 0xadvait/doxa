@@ -8,6 +8,17 @@ description: Use when answering from or growing a custom knowledge base where ev
 Use the installed `doxa` CLI as the source of truth for grounded beliefs in a
 custom knowledge base. No quote, no claim.
 
+## Check state first
+
+```bash
+doxa status
+```
+
+`doxa status` reports the active config, data location, and belief/quote counts.
+If it shows `beliefs: 0`, the base is empty -- there is nothing to ground on, so
+offer to `doxa ingest` a source instead of answering. Use `doxa sources list` to
+see what has been ingested and `doxa sources remove <id>` to undo a mistake.
+
 ## Answer from the belief base
 
 Run:

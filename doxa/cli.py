@@ -95,6 +95,12 @@ def _error_hint(exc: Exception) -> str:
     """Map a raw error to one actionable next step, for humans at a prompt."""
 
     text = str(exc).lower()
+    # Postgres / pgvector first (so 'database "x" does not exist' doesn't match the generic file branch)
+    if "extension" in text and "vector" in text:
+        return 'enable pgvector as a superuser/owner: psql "$DOXA_POSTGRES_DSN" -c "CREATE EXTENSION IF NOT EXISTS vector;"'
+    if any(s in text for s in ("connection to server", "could not connect", "could not translate host",
+                               "connection refused", "password authentication", 'role "', 'database "')):
+        return "check DOXA_POSTGRES_DSN points at a running Postgres (see `doxa status`); create the database/role if needed."
     if any(s in text for s in ("no such file", "does not exist", "not found", "cannot find")):
         if any(s in text for s in ("config", ".yaml", ".yml")):
             return "create one with `doxa init`, or point at it with --config <path>."
@@ -285,35 +291,84 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def _mining_progress(title: str):
+    """A progress callback for mine_source: a live chunk counter on stderr.
+
+    Mining calls an LLM per chunk and can take minutes; without this the CLI looks
+    frozen. On a non-TTY we print one static line instead of a redrawing counter.
+    """
+    if not sys.stderr.isatty():
+        print(f"Mining {title} ...", file=sys.stderr, flush=True)
+        return None
+
+    def cb(index: int, total: int) -> None:
+        sys.stderr.write(f"\r  mining {title}: chunk {index}/{total} ...")
+        sys.stderr.flush()
+        if index == total:
+            sys.stderr.write("\r" + " " * (len(title) + 36) + "\r")
+            sys.stderr.flush()
+
+    return cb
+
+
 def cmd_ingest(args: argparse.Namespace) -> int:
     config = load_config(args.config, allow_demo_default=False)
-    stdin_text = sys.stdin.read() if args.source == "-" else None
-    source = load_source(
-        args.source,
-        config=config,
-        via=args.via,
-        stdin_text=stdin_text,
-        title=args.title or "",
-        author=args.author or "",
-        url=args.url or "",
-    )
-    result = mine_source(source, config)
     store = JsonlStore(config)
-    store.append(result.beliefs, result.quotes, [source])
-    print(f"Ingested: {source.title}")
-    print(f"Beliefs written: {len(result.beliefs)}")
-    print(f"Quotes written: {len(result.quotes)}")
-    if result.dropped_quotes:
-        print(f"Dropped unverifiable quotes: {len(result.dropped_quotes)}")
-    if result.dropped_beliefs:
-        print(f"Dropped unanchored beliefs: {len(result.dropped_beliefs)}")
-    if sys.stdout.isatty():
+    source_args = args.source if isinstance(args.source, list) else [args.source]
+    stdin_text = sys.stdin.read() if "-" in source_args else None
+
+    total_b = total_q = ingested = skipped = 0
+    for src in source_args:
+        source = load_source(
+            src,
+            config=config,
+            via=args.via,
+            stdin_text=stdin_text if src == "-" else None,
+            title=args.title or "",
+            author=args.author or "",
+            url=args.url or "",
+        )
+        if not source.text.strip():
+            _hint(f"skipped {source.title}: no extractable text (scanned PDF needs OCR; empty file has nothing to mine).")
+            skipped += 1
+            continue
+        if store.has_source(source.id):
+            if not args.reingest:
+                _hint(f"skipped {source.title}: already ingested. Re-run with --reingest to replace it.")
+                skipped += 1
+                continue
+            removed = store.remove_source(source.id)
+            _hint(f"re-ingesting {source.title} (removed {removed['beliefs']} old beliefs, {removed['quotes']} quotes).")
+
+        result = mine_source(source, config, progress=_mining_progress(source.title))
+        store.append(result.beliefs, result.quotes, [source])
+        ingested += 1
+        total_b += len(result.beliefs)
+        total_q += len(result.quotes)
+
+        line = f"Ingested: {source.title}\n  beliefs {len(result.beliefs)} · quotes {len(result.quotes)}"
+        dropped = []
+        if result.dropped_quotes:
+            dropped.append(f"{len(result.dropped_quotes)} quotes not verbatim")
+        if result.dropped_beliefs:
+            dropped.append(f"{len(result.dropped_beliefs)} beliefs unanchored")
+        if dropped:
+            line += "  (dropped: " + "; ".join(dropped) + ")"
+        print(line)
+        if not result.beliefs:
+            _hint(f"note: 0 beliefs from {source.title} -- the lens matched nothing; adjust it via `doxa init`.")
+
+    if len(source_args) > 1:
+        print(f"Done: {ingested} ingested, {skipped} skipped. Added {total_b} beliefs, {total_q} quotes.")
+    if ingested and sys.stdout.isatty():
         _hint('Next: doxa query "<question>"   |   doxa eval   |   doxa status')
     return 0
 
 
 def cmd_index(args: argparse.Namespace) -> int:
     config = load_config(args.config)
+    if _is_demo_fallback(config):
+        _hint("note: no doxa.yaml here -- indexing the bundled demo base. Run `doxa init` to build your own.")
     counts = index_postgres(config)
     print(f"Indexed {counts['beliefs']} beliefs and {counts['quotes']} quotes into Postgres/pgvector.")
     return 0
@@ -322,7 +377,7 @@ def cmd_index(args: argparse.Namespace) -> int:
 def _format_result(result: RetrievalResult, index: int) -> str:
     lines = [
         f"{index}. {result.belief.belief}",
-        f"   stance={result.belief.stance} conviction={result.belief.conviction:.2f} score={result.score:.4f}",
+        f"   stance={result.belief.stance} conviction={result.belief.conviction:.2f}",
         f"   source={result.belief.source.title} / {result.belief.source.author} / {result.belief.source.date}",
     ]
     for quote in result.quotes:
@@ -362,7 +417,7 @@ def cmd_query(args: argparse.Namespace) -> int:
             if not _is_demo_fallback(config) and not _store_has_beliefs(config):
                 _hint("hint: your belief base is empty -- ingest a source: doxa ingest <file|url|->   (or try `doxa demo`).")
             else:
-                _hint("hint: try broader terms, --search hybrid, or a higher --limit.")
+                _hint("hint: try broader terms, raise --top, or --search hybrid if you've run `doxa index`.")
         return 0
     if args.answer:
         print(render_terminal_answer(args.query, results))
@@ -379,16 +434,26 @@ def cmd_eval(args: argparse.Namespace) -> int:
     report = faithfulness_report(config)
     if args.json:
         print(json.dumps(report, indent=2, ensure_ascii=False))
+        return 0 if report["ok"] else 1
+    ok = report["ok"]
+    print("PASS" if ok else "FAIL")
+    print(f"  beliefs {report['beliefs']} · quotes {report['quotes']} · sources {report['sources']}")
+    print(f"  quote verbatim: {report['quote_verbatim_percent']:.2f}%  ({report['checked_quotes']} checked)")
+    if ok:
+        print("  every quote is verbatim and every belief is linked.")
     else:
-        print(f"Beliefs: {report['beliefs']}")
-        print(f"Quotes: {report['quotes']}")
-        print(f"Sources: {report['sources']}")
-        print(f"Checked quotes: {report['checked_quotes']}")
-        print(f"Quote verbatim: {report['quote_verbatim_percent']:.2f}%")
-        print(f"Bad links: {len(report['bad_links'])}")
-        print(f"Orphan beliefs: {len(report['orphan_beliefs'])}")
-        print(f"OK: {report['ok']}")
-    return 0 if report["ok"] else 1
+        def _ids(rows: list, key: str | None = None) -> str:
+            vals = [str(r[key]) if key else str(r) for r in rows[:10]]
+            return ", ".join(vals) + (" ..." if len(rows) > 10 else "")
+
+        if report["invalid_quotes"]:
+            print(f"  non-verbatim quotes ({len(report['invalid_quotes'])}): {_ids(report['invalid_quotes'], 'id')}")
+        if report["bad_links"]:
+            print(f"  broken belief links ({len(report['bad_links'])}): {_ids(report['bad_links'], 'quote_id')}")
+        if report["orphan_beliefs"]:
+            print(f"  orphan beliefs ({len(report['orphan_beliefs'])}): {_ids(report['orphan_beliefs'])}")
+        _hint("hint: fix or remove the listed rows in data/*.jsonl (or re-ingest the source), then re-run `doxa eval`.")
+    return 0 if ok else 1
 
 
 def cmd_demo(args: argparse.Namespace) -> int:
@@ -444,6 +509,39 @@ def cmd_status(args: argparse.Namespace) -> int:
         _hint("note: no doxa.yaml here -- run `doxa init` to start your own belief base.")
     elif n_beliefs == 0:
         _hint("hint: your base is empty -- ingest a source: doxa ingest <file|url|->")
+    return 0
+
+
+def cmd_sources(args: argparse.Namespace) -> int:
+    command = getattr(args, "sources_command", None) or "list"
+    config = load_config(getattr(args, "config", None))
+    store = JsonlStore(config)
+    if command == "remove":
+        removed = store.remove_source(args.id)
+        print(f"Removed {args.id}: -{removed['beliefs']} beliefs, -{removed['quotes']} quotes, -1 source.")
+        return 0
+    # list
+    if _is_demo_fallback(config):
+        _hint("note: no doxa.yaml here -- showing the bundled demo base.")
+    sources = store.sources()
+    if not sources:
+        print("No sources ingested yet.")
+        _hint("add one: doxa ingest <file|url|->")
+        return 0
+    from collections import Counter
+
+    beliefs = store.beliefs()
+    quotes = store.quotes()
+    b_by = Counter((b.source.title, b.source.url) for b in beliefs)
+    q_by = Counter((q.source.title, q.source.url) for q in quotes)
+    print(f"{len(sources)} source(s):")
+    for source in sources:
+        key = (source.title, source.url)
+        print(f"  {source.id}  {source.title}  [beliefs {b_by.get(key, 0)}, quotes {q_by.get(key, 0)}]")
+        location = source.url or source.path
+        if location:
+            print(f"      {location}")
+    _hint("remove one with: doxa sources remove <id>")
     return 0
 
 
@@ -552,12 +650,13 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--lens-question", help="Guiding question for the lens.")
     init.set_defaults(func=cmd_init)
 
-    ingest = subparsers.add_parser("ingest", help="Ingest a text, PDF, URL, YouTube source, or '-' from stdin.")
-    ingest.add_argument("source")
+    ingest = subparsers.add_parser("ingest", help="Ingest one or more sources (text, PDF, URL, YouTube, or '-' from stdin).")
+    ingest.add_argument("source", nargs="+", help="One or more files/URLs (shell globs work), or '-' for stdin.")
     ingest.add_argument("--config")
-    ingest.add_argument("--title", help="Override title metadata for stdin/text sources.")
-    ingest.add_argument("--author", help="Override author metadata for stdin/text sources.")
-    ingest.add_argument("--url", help="Attach source URL metadata for stdin/text sources.")
+    ingest.add_argument("--reingest", action="store_true", help="Replace a source already in the base instead of skipping it.")
+    ingest.add_argument("--title", help="Override title metadata for the ingested source.")
+    ingest.add_argument("--author", help="Override author metadata for the ingested source.")
+    ingest.add_argument("--url", help="Attach source URL metadata for the ingested source.")
     ingest.add_argument("--via", choices=["requests", "brightdata"], help="Override URL fetcher for this ingest.")
     ingest.set_defaults(func=cmd_ingest)
 
@@ -573,7 +672,7 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("--domain", action="append", default=[], help="Boost results tagged with domain:<slug>. Repeatable.")
     query.add_argument("--domains", default="", help="Comma-separated domain slugs to boost.")
     query.add_argument("--no-domain-boost", action="store_true", help="Disable configured domain preference boosts.")
-    query.add_argument("--answer", action="store_true", help="Render a local humanized terminal answer.")
+    query.add_argument("--answer", action="store_true", help="Format results as a clean evidence brief (claim + grounding quotes).")
     query.add_argument("--json", action="store_true")
     query.set_defaults(func=cmd_query)
 
@@ -604,6 +703,18 @@ def build_parser() -> argparse.ArgumentParser:
     status = subparsers.add_parser("status", help="Show config, data location, and belief/quote counts.")
     status.add_argument("--config")
     status.set_defaults(func=cmd_status)
+
+    sources_p = subparsers.add_parser("sources", help="List or remove ingested sources.")
+    sources_p.add_argument("--config")
+    sources_p.set_defaults(func=cmd_sources)
+    sources_sub = sources_p.add_subparsers(dest="sources_command")
+    s_list = sources_sub.add_parser("list", help="List ingested sources with belief/quote counts.")
+    s_list.add_argument("--config", default=argparse.SUPPRESS)
+    s_list.set_defaults(func=cmd_sources)
+    s_rm = sources_sub.add_parser("remove", help="Remove a source and its beliefs/quotes by id.")
+    s_rm.add_argument("id")
+    s_rm.add_argument("--config", default=argparse.SUPPRESS)
+    s_rm.set_defaults(func=cmd_sources)
 
     domains = subparsers.add_parser("domains", help="View or edit domain retrieval preferences.")
     domains.add_argument("--config")
