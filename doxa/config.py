@@ -68,9 +68,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "retrieval": {
         "default_search": "keyword",
+        "stem": True,
         "limit": 5,
         "candidate_limit": 50,
         "quote_boost": 2.0,
+        "phrase_boost": 0.5,
         "domain_query_boost": 0.25,
         "max_quotes_per_result": 2,
         "bm25_k1": 1.5,

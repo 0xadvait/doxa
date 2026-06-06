@@ -16,6 +16,15 @@ phrase that appears only inside a quote can still retrieve the belief grounded
 by that quote. When a quote matched the query, it is displayed before other
 linked quotes.
 
+Tokens are lowercased, stopword-filtered, and Porter-stemmed, so morphological
+variants match: `factions` finds `faction`, `conform` finds `conformity`.
+Stemming is symmetric across documents and the query and never alters stored
+text (the verbatim guarantee is untouched). Disable it with `retrieval.stem: false`.
+
+A multi-word query that appears as an exact contiguous phrase in a belief or
+quote gets an extra precision boost (`retrieval.phrase_boost`), ranking true
+phrase matches above scattered-term matches.
+
 The default terminal view is the raw retrieval record format. Add `--answer`
 when you want a deterministic local answer for a human reader:
 
@@ -31,15 +40,18 @@ Useful config:
 
 ```yaml
 retrieval:
+  stem: true            # Porter stemming + stopword removal for keyword search
   candidate_limit: 50
-  quote_boost: 2.0
-  max_quotes_per_result: null
+  quote_boost: 2.0      # how strongly a matching quote lifts its belief
+  phrase_boost: 0.5     # extra weight when the exact query phrase appears in a doc
+  max_quotes_per_result: 2
 ```
 
 `candidate_limit` overfetches before final ranking. `quote_boost` controls how
-strongly quote hits affect the linked belief score. Set `max_quotes_per_result`
-to an integer for compact output; the default `null` preserves all linked quotes,
-with direct quote hits ordered first.
+strongly quote hits lift the linked belief. `phrase_boost` rewards exact
+contiguous phrase matches. `max_quotes_per_result` defaults to `2` for scannable
+output (set `null` to keep every linked quote); direct quote hits are ordered
+first.
 
 Semantic retrieval needs embeddings and Postgres/pgvector:
 
@@ -49,6 +61,11 @@ export DOXA_POSTGRES_DSN=postgresql://...
 doxa index
 doxa query "political conflict" --search semantic
 ```
+
+Queries are embedded with the model's query instruction (e.g. bge-v1.5's
+retrieval prefix) while documents are embedded plain -- the standard asymmetric
+setup for short-query to long-passage retrieval. No extra config is needed, and
+existing indexes stay valid (only the query side changed).
 
 Hybrid retrieval uses reciprocal rank fusion with `k=60` by default. It combines
 keyword and semantic rankings when both are available. If semantic search is not

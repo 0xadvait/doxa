@@ -527,3 +527,32 @@ def test_domain_alias_query_boost_can_discover_legacy_tagged_candidate(tmp_path:
     assert [result.belief.id for result in unboosted] == ["b_literal"]
     assert [result.belief.id for result in zero_boost] == ["b_literal"]
     assert "b_legacy" in [result.belief.id for result in boosted]
+
+
+def test_phrase_boost_raises_exact_phrase_match(tmp_path: Path) -> None:
+    source = _source()
+    beliefs = [
+        {"id": "b_phrase", "belief": "They resist social conformity.",
+         "reasoning": "", "stance": "supports", "conviction": 0.8, "tags": [], "source": source},
+        {"id": "b_scatter", "belief": "Conformity and social order.",
+         "reasoning": "", "stance": "supports", "conviction": 0.8, "tags": [], "source": source},
+    ]
+    quotes = [
+        {"id": "q_p", "quote": "an unrelated remark", "speaker": "",
+         "source": source, "context": "", "tags": [], "belief_ids": ["b_phrase"]},
+        {"id": "q_s", "quote": "another unrelated remark", "speaker": "",
+         "source": source, "context": "", "tags": [], "belief_ids": ["b_scatter"]},
+    ]
+    cfg_on = _write_store(tmp_path, beliefs, quotes)
+    cfg_off = deepcopy(cfg_on)
+    cfg_off["retrieval"]["phrase_boost"] = 0.0
+
+    on, _ = search("social conformity", cfg_on, search_type="keyword", limit=2)
+    off, _ = search("social conformity", cfg_off, search_type="keyword", limit=2)
+    on_scores = {r.belief.id: r.score for r in on}
+    off_scores = {r.belief.id: r.score for r in off}
+
+    # the belief carrying the exact contiguous phrase is boosted...
+    assert on_scores["b_phrase"] > off_scores["b_phrase"]
+    # ...while the scattered-terms belief (no contiguous phrase) is unaffected
+    assert abs(on_scores["b_scatter"] - off_scores["b_scatter"]) < 1e-9
