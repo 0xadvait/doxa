@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "doxa"
 version = "0.1.0"
-description = "An agent skill for custom verbatim-grounded belief bases."
+description = "Build and query verbatim-grounded belief bases -- every answer pinned to an exact source quote."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
