@@ -2,7 +2,21 @@
 
 This guide is for an LLM agent that has landed in this repo and needs to help a
 user set up or use doxa interactively. Be command-first and keep the user in the
-loop for provider, model, and source choices.
+loop for provider, model, and source choices. Surface capabilities proactively --
+users often don't know what's available.
+
+## Capabilities at a glance
+
+| Goal | Command |
+| --- | --- |
+| State | `doxa status` · smoke test `doxa demo` · diagnose `doxa doctor` |
+| Start a base | `doxa init --lens-template <name>` -- browse `doxa lenses list` |
+| Lenses | `doxa lenses list` / `show <name>` / `add <name> --from <name>` |
+| Ingest | `doxa ingest <file\|url\|pdf\|youtube\|->` |
+| Hard pages | `doxa ingest <url> --via jina\|firecrawl\|brightdata\|claude\|codex\|hermes` `[--mode browser\|extract --prompt ...] [--yolo]` |
+| Answer | `doxa query "<q>" --answer` / `--json` / `--domain <slug>` / `--search hybrid` |
+| Honest | `doxa eval` · `doxa sources list\|remove <id>` · `doxa domains set <slug> <0-10>` |
+| Agent skill | `doxa skill install --harness claude-code\|codex\|hermes\|openclaw` |
 
 ## Detect
 
@@ -87,7 +101,25 @@ doxa init ./doxa.yaml --yes --provider codex-cli
 doxa init ./fireworks.yaml --yes --provider openai-compatible --model accounts/fireworks/models/<slug>
 ```
 
-Help the user write a lens with three fields:
+### Pick a lens (do this first -- don't make the user invent one)
+
+A lens is the question doxa asks of every source; it shapes every belief. doxa
+ships an opinionated library -- show it and choose together rather than starting
+from a blank lens:
+
+```bash
+doxa lenses list                              # founder-strategy, investment-memo, research-literature, ...
+doxa lenses show investment-memo              # inspect one first
+doxa init --lens-template founder-strategy    # seed a base from it
+doxa lenses add my-lens --from founder-strategy   # fork + tailor it to the user
+```
+
+`doxa init` with no `--lens-template` prompts the user to pick from the same
+library interactively. Built-ins: `durable-beliefs`, `founder-strategy`,
+`investment-memo`, `technical-design`, `research-literature`, `policy-analysis`,
+`personal-principles`, `customer-discovery`.
+
+If none fit, write a custom lens with three fields:
 
 - `name`: short identifier.
 - `description`: what kind of beliefs to extract.
@@ -107,10 +139,11 @@ For pre-fetched text or copied notes, pipe stdin and attach metadata:
 printf '%s' "$SOURCE_TEXT" | doxa ingest - --title "Title" --author "Author" --url "https://source.example"
 ```
 
-Show the verbatim guarantee:
+Show the verbatim guarantee, and diagnose setup if anything looks off:
 
 ```bash
-doxa eval
+doxa eval     # every quote still verbatim, every belief still linked
+doxa doctor   # config, storage, provider, and semantic-index readiness
 ```
 
 Query it (keyword is the zero-setup default):
@@ -140,6 +173,14 @@ automation, structured extraction, platform endpoints) to satisfy the prompt:
 ```bash
 doxa ingest <url> --via hermes --mode browser
 doxa ingest <url> --via hermes --mode extract --prompt "title, author, date as JSON"
+```
+
+Agent fetchers run safely by default. For unattended runs on sources the user
+trusts, `--yolo` enables codex `--dangerously-bypass-approvals-and-sandbox`,
+hermes `--yolo`, and the `command` shell for that ingest:
+
+```bash
+doxa ingest <url> --via codex --yolo
 ```
 
 ```bash

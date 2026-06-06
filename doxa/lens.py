@@ -76,9 +76,15 @@ Source metadata:
 {source_block}
 
 Rules:
+- Extract EVERY distinct belief this lens surfaces in the source text. There is no
+  target number -- never cap the list to a round count and never pad it. Scale to the
+  source: a rich passage yields many beliefs, a thin one few. Mine the whole chunk and
+  omit nothing that fits the lens; do not stop early to keep the output short.
+- Likewise mine every verbatim quote that grounds a belief -- as many as the text supports.
 - Every quote.quote must be copied verbatim from Source text.
 - Each belief must be linked by at least one quote.belief_ids entry.
-- Prefer concise beliefs that state a stance, not a summary paragraph.
+- Prefer concise beliefs that each state one stance, not a summary paragraph -- but split
+  a passage into multiple beliefs rather than dropping any; one belief per distinct claim.
 - Use domain:<slug> tags only when the source text clearly supports that domain classification.
 - conviction is a number from 0 to 1 based only on how directly the quote supports the belief.
 - Return strict JSON with top-level keys "beliefs" and "quotes".

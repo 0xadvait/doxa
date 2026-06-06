@@ -188,6 +188,39 @@ def _prompt_provider(default: str) -> str:
     return _normalize_provider(raw)
 
 
+def _lens_choice(raw: str, names: list[str]) -> str | None:
+    """Map a picker input (number, name, or blank/'custom') to a template name, or None for custom."""
+    raw = raw.strip()
+    if not raw or raw.lower() in {"custom", "c"}:
+        return None
+    if raw.isdigit():
+        index = int(raw) - 1
+        return names[index] if 0 <= index < len(names) else None
+    return raw if raw in names else None
+
+
+def _prompt_lens() -> dict[str, Any]:
+    """Interactive lens picker. Returns a chosen template dict, or {} for a custom lens."""
+    catalog = lens_catalog()
+    if not catalog:
+        return {}
+    names = [row["name"] for row in catalog]
+    width = max(len(name) for name in names)
+    print("\nPick a lens -- the question doxa asks of every source (this shapes every belief):")
+    for index, row in enumerate(catalog, start=1):
+        suffix = " (yours)" if row["origin"] == "user" else ""
+        print(f"  {index}. {row['name'].ljust(width)}  {row['summary']}{suffix}")
+    print(f"  {len(catalog) + 1}. {'custom'.ljust(width)}  define your own from scratch")
+    default_name = "durable-beliefs" if "durable-beliefs" in names else names[0]
+    name = _lens_choice(_prompt_text("Lens number or name", default_name), names)
+    if name is None:
+        return {}
+    try:
+        return get_lens_template(name)
+    except DoxaError:
+        return {}
+
+
 def _init_answers(args: argparse.Namespace, *, interactive: bool) -> dict[str, str]:
     provider_default = _normalize_provider(args.provider)
     provider = _prompt_provider(provider_default) if interactive else provider_default
@@ -211,6 +244,8 @@ def _init_answers(args: argparse.Namespace, *, interactive: bool) -> dict[str, s
             base_url = _prompt_text("OpenAI-compatible base_url", base_url)
 
     template = get_lens_template(args.lens_template) if getattr(args, "lens_template", None) else {}
+    if interactive and not template:
+        template = _prompt_lens()  # let the user pick from the library instead of inventing one
     lens_name_default = args.lens_name or template.get("name") or DEFAULT_LENS["name"]
     lens_description_default = args.lens or template.get("description") or DEFAULT_LENS["description"]
     lens_question_default = args.lens_question or template.get("question") or DEFAULT_LENS["question"]
@@ -218,10 +253,9 @@ def _init_answers(args: argparse.Namespace, *, interactive: bool) -> dict[str, s
     lens_tags = template.get("tags") or []
     if interactive:
         if template:
-            print(f"Starting from the '{args.lens_template}' lens template (edit any field below).")
+            print(f"\nUsing the '{template.get('name')}' lens -- press Enter to keep each field, or edit it:")
         else:
-            print("Now define the lens: what kind of beliefs should doxa mine?")
-            print("  (tip: start from a template -- see `doxa lenses list`.)")
+            print("\nDefine a custom lens: what kind of beliefs should doxa mine?")
         lens_name = _prompt_text("Lens name", lens_name_default)
         lens_description = _prompt_text("Lens description", lens_description_default)
         lens_question = _prompt_text("Guiding question", lens_question_default)
