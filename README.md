@@ -461,6 +461,18 @@ sources:
   codex: { timeout: 300 }        # argv/prompt also overridable, e.g. sources.codex.argv
 ```
 
+**Choose how to scrape** with `--mode` / `--prompt` (agent + `command` fetchers).
+`--prompt` is free-form, so the agent can use whatever it has -- SERP search,
+browser automation, structured extraction, platform-specific endpoints -- to
+satisfy it:
+
+```bash
+doxa ingest <url> --via hermes                                  # clean markdown (default)
+doxa ingest <url> --via hermes --mode browser                  # render JS, scroll, then markdown
+doxa ingest <url> --via hermes --mode extract --prompt "name, price, rating as JSON"
+doxa ingest <url> --via claude --prompt "return only the methods section"
+```
+
 **MCP-equipped agents** can also skip fetchers and pipe pre-fetched markdown in:
 
 ```bash

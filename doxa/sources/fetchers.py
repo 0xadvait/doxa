@@ -122,11 +122,12 @@ def _command(url: str, config: dict[str, Any]) -> tuple[str, str]:
     argv = cfg.get("argv")
     shell = cfg.get("shell")
     timeout = int(cfg.get("timeout", 120))
+    prompt = str(config.get("_fetch_prompt") or "")  # from --prompt/--mode, if any
     if argv:
-        cmd: Any = [str(part).replace("{url}", url) for part in argv]
+        cmd: Any = [str(part).replace("{url}", url).replace("{prompt}", prompt) for part in argv]
         use_shell = False
     elif shell:
-        cmd = str(shell).replace("{url}", url)
+        cmd = str(shell).replace("{url}", url).replace("{prompt}", prompt)
         use_shell = True
     else:
         raise DoxaError(
@@ -172,6 +173,34 @@ _AGENT_PRESETS: dict[str, dict[str, Any]] = {
     "hermes": {"argv": ["hermes", "--yolo", "-z", "{prompt}"], "capture": "stdout"},
 }
 
+_BROWSER_PROMPT = (
+    "Open the web page at {url} in a real browser; scroll and expand to load all dynamic "
+    "content (infinite scroll, lazy-loaded sections, hidden tabs), then output ONLY the "
+    "main readable content as clean Markdown. No commentary, no code fences."
+)
+
+# Ingest modes choose HOW an agent/command fetcher scrapes (not which fetcher).
+INGEST_MODES = ("markdown", "browser", "extract")
+
+
+def build_fetch_prompt(mode: str | None, prompt: str | None) -> str | None:
+    """Turn --mode/--prompt into a fetch instruction for agent/command fetchers.
+
+    Returns None for the default (markdown) so the fetcher uses its own default.
+    """
+    if mode == "extract":
+        if not prompt:
+            raise DoxaError(
+                "--mode extract needs --prompt describing what to pull, "
+                "e.g. --prompt 'product name, price, rating as JSON'."
+            )
+        return "Fetch the web page at {url}, then extract the following and output ONLY valid JSON:\n\n" + prompt
+    if prompt:
+        return prompt
+    if mode == "browser":
+        return _BROWSER_PROMPT
+    return None
+
 
 def _agent_fetch(name: str) -> FetcherFn:
     def fetch(url: str, config: dict[str, Any]) -> tuple[str, str]:
@@ -180,7 +209,13 @@ def _agent_fetch(name: str) -> FetcherFn:
 
         preset = _AGENT_PRESETS[name]
         cfg = _sources_cfg(config, name)
-        prompt = str(cfg.get("prompt") or _SCRAPE_PROMPT).replace("{url}", url)
+        # Per-ingest --prompt/--mode override (config["_fetch_prompt"]) wins, then
+        # sources.<name>.prompt, then the default markdown prompt. Ensure the URL
+        # is always conveyed even if a custom prompt forgot the {url} placeholder.
+        template = str(config.get("_fetch_prompt") or cfg.get("prompt") or _SCRAPE_PROMPT)
+        if "{url}" not in template:
+            template = "Fetch the web page at {url}.\n\n" + template
+        prompt = template.replace("{url}", url)
         argv_template = cfg.get("argv") or preset["argv"]
         capture = str(cfg.get("capture") or preset["capture"])
         timeout = int(cfg.get("timeout", 300))

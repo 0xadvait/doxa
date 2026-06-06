@@ -122,3 +122,30 @@ def test_agent_fetcher_missing_binary_is_friendly() -> None:
     with pytest.raises(DoxaError) as exc:
         get_fetcher("hermes")("https://x", config)
     assert "on PATH" in str(exc.value)
+
+
+def test_build_fetch_prompt_modes() -> None:
+    from doxa.sources.fetchers import build_fetch_prompt
+
+    assert build_fetch_prompt("markdown", None) is None      # default
+    assert build_fetch_prompt(None, None) is None
+    assert "browser" in (build_fetch_prompt("browser", None) or "").lower()
+    assert build_fetch_prompt(None, "just this") == "just this"
+    extract = build_fetch_prompt("extract", "name, price")
+    assert "JSON" in extract and "name, price" in extract
+    with pytest.raises(DoxaError):
+        build_fetch_prompt("extract", None)
+
+
+def test_fetch_prompt_overrides_agent_prompt_and_injects_url() -> None:
+    # fake claude echoes the prompt it was handed
+    config = {"sources": {"claude": {"argv": ["python3", "-c", "import sys;print('# Got\\n\\n'+sys.argv[1])", "{prompt}"]}}}
+    rec = load_url("https://ex.com/p", fetcher="claude", config=config, fetch_prompt="EXTRACT fields as JSON")
+    assert "EXTRACT fields as JSON" in rec.text
+    assert "https://ex.com/p" in rec.text  # url injected even though the prompt omitted it
+
+
+def test_command_fetcher_substitutes_prompt() -> None:
+    config = {"sources": {"command": {"argv": ["python3", "-c", "import sys;print('# Cmd\\n\\n'+sys.argv[1])", "{prompt}"]}}}
+    rec = load_url("https://x", fetcher="command", config=config, fetch_prompt="do the thing")
+    assert "do the thing" in rec.text

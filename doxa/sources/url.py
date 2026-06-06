@@ -77,8 +77,17 @@ def source_from_url_content(url: str, text: str, content_type: str = "") -> Sour
     return SourceRecord(id=source_id, title=title, author="", date="", url=url, path=url, text=body)
 
 
-def load_url(url: str, *, fetcher: str = "requests", config: dict[str, Any] | None = None) -> SourceRecord:
+def load_url(
+    url: str,
+    *,
+    fetcher: str = "requests",
+    config: dict[str, Any] | None = None,
+    fetch_prompt: str | None = None,
+) -> SourceRecord:
     from .fetchers import get_fetcher
 
-    text, content_type = get_fetcher(fetcher)(url, config or {})
+    effective = dict(config or {})
+    if fetch_prompt:
+        effective["_fetch_prompt"] = fetch_prompt
+    text, content_type = get_fetcher(fetcher)(url, effective)
     return source_from_url_content(url, text, content_type)

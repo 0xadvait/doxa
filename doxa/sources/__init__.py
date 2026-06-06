@@ -34,6 +34,7 @@ def load_source(
     title: str = "",
     author: str = "",
     url: str = "",
+    fetch_prompt: str | None = None,
 ) -> SourceRecord:
     """Load a local file or remote URL into a source record."""
 
@@ -51,7 +52,7 @@ def load_source(
         from .url import load_url
 
         return _metadata_overrides(
-            load_url(location, fetcher=_configured_fetcher(config, via), config=config),
+            load_url(location, fetcher=_configured_fetcher(config, via), config=config, fetch_prompt=fetch_prompt),
             title=title,
             author=author,
             url=url,
