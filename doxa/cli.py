@@ -25,7 +25,7 @@ from .domains import (
 from .eval import faithfulness_report
 from .mine import mine_source
 from .retrieve import search
-from .resources import demo_config_path, skill_text
+from .resources import banner_text, demo_config_path, skill_text
 from .schema import DoxaError, RetrievalResult
 from .sources import load_source
 from .store import JsonlStore, index_postgres
@@ -345,6 +345,11 @@ def cmd_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_banner(args: argparse.Namespace) -> int:
+    sys.stdout.write(banner_text())
+    return 0
+
+
 def cmd_domains(args: argparse.Namespace) -> int:
     command = getattr(args, "domain_command", None) or "view"
     config_path = getattr(args, "config", None)
@@ -467,6 +472,9 @@ def build_parser() -> argparse.ArgumentParser:
     demo.add_argument("--query", default="")
     demo.add_argument("--limit", type=int, default=3)
     demo.set_defaults(func=cmd_demo)
+
+    banner = subparsers.add_parser("banner", help="Print the bundled doxa terminal banner.")
+    banner.set_defaults(func=cmd_banner)
 
     domains = subparsers.add_parser("domains", help="View or edit domain retrieval preferences.")
     domains.add_argument("--config")

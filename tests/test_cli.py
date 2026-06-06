@@ -7,6 +7,7 @@ from doxa.cli import _normalize_provider, _resolve_init_dest, build_parser, main
 from doxa.cli import cmd_query
 from doxa.config import load_config
 from doxa.domains import domain_weights
+from doxa.resources import banner_text
 from doxa.schema import Belief, Quote, RetrievalResult, SourceRef
 
 
@@ -49,6 +50,15 @@ def test_ingest_accepts_stdin_metadata_and_fetcher_override() -> None:
     assert args.author == "Emerson"
     assert args.url == "https://example.com/test"
     assert args.via == "brightdata"
+
+
+def test_banner_command_prints_bundled_banner(capsys) -> None:
+    code = main(["banner"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert captured.out == banner_text()
+    assert captured.err == ""
 
 
 def test_query_accepts_domain_flags() -> None:
