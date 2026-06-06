@@ -1,0 +1,20 @@
+# doxa lens template: durable-beliefs
+# General-purpose: timeless claims and principles a source argues for.
+# Fork it:  doxa lenses add my-durable-beliefs --from durable-beliefs
+
+name: durable-beliefs
+summary: 'General-purpose: timeless claims and principles a source argues for.'
+description: Extract durable, generalizable beliefs -- claims, principles, and stances the source argues
+  for that would still matter a year from now. Skip news, ephemera, and plain summary; capture what the
+  source actually commits to.
+question: What does this source believe that is durable and worth remembering?
+stances:
+- supports
+- questions
+- rejects
+- complicates
+tags:
+- principle
+- claim
+- tradeoff
+- mental-model

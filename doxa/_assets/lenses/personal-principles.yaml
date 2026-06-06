@@ -1,0 +1,20 @@
+# doxa lens template: personal-principles
+# A personal canon: operating principles for judgment, work, and life.
+# Fork it:  doxa lenses add my-personal-principles --from personal-principles
+
+name: personal-principles
+summary: 'A personal canon: operating principles for judgment, work, and life.'
+description: 'Extract durable personal principles -- rules for judgment, decisions, work, and life the
+  source stands behind. First-person and prescriptive: things meant to be lived by, not merely observed.'
+question: What principle does this source live or work by?
+stances:
+- holds
+- questions
+- revised
+- in-tension
+tags:
+- judgment
+- discipline
+- decisions
+- relationships
+- craft

@@ -29,6 +29,14 @@ from .domains import (
 from .eval import faithfulness_report
 from .mine import mine_source
 from .retrieve import search
+from .lenses import (
+    get_lens_template,
+    lens_catalog,
+    remove_user_lens,
+    save_user_lens,
+    template_to_config_lens,
+    user_lens_dir,
+)
 from .resources import demo_config_path, skill_text
 from .schema import DoxaError, RetrievalResult
 from .sources import load_source
@@ -202,11 +210,18 @@ def _init_answers(args: argparse.Namespace, *, interactive: bool) -> dict[str, s
         if provider == "openai-compatible":
             base_url = _prompt_text("OpenAI-compatible base_url", base_url)
 
-    lens_name_default = args.lens_name or DEFAULT_LENS["name"]
-    lens_description_default = args.lens or DEFAULT_LENS["description"]
-    lens_question_default = args.lens_question or DEFAULT_LENS["question"]
+    template = get_lens_template(args.lens_template) if getattr(args, "lens_template", None) else {}
+    lens_name_default = args.lens_name or template.get("name") or DEFAULT_LENS["name"]
+    lens_description_default = args.lens or template.get("description") or DEFAULT_LENS["description"]
+    lens_question_default = args.lens_question or template.get("question") or DEFAULT_LENS["question"]
+    lens_stances = template.get("stances") or ["supports", "questions", "rejects", "complicates"]
+    lens_tags = template.get("tags") or []
     if interactive:
-        print("Now define the lens: what kind of beliefs should doxa mine?")
+        if template:
+            print(f"Starting from the '{args.lens_template}' lens template (edit any field below).")
+        else:
+            print("Now define the lens: what kind of beliefs should doxa mine?")
+            print("  (tip: start from a template -- see `doxa lenses list`.)")
         lens_name = _prompt_text("Lens name", lens_name_default)
         lens_description = _prompt_text("Lens description", lens_description_default)
         lens_question = _prompt_text("Guiding question", lens_question_default)
@@ -223,6 +238,8 @@ def _init_answers(args: argparse.Namespace, *, interactive: bool) -> dict[str, s
         "lens_name": lens_name,
         "lens_description": lens_description,
         "lens_question": lens_question,
+        "lens_stances": lens_stances,
+        "lens_tags": lens_tags,
     }
 
 
@@ -244,8 +261,8 @@ def _build_init_config(answers: dict[str, str], *, full: bool = False) -> dict[s
         "name": answers["lens_name"],
         "description": answers["lens_description"],
         "question": answers["lens_question"],
-        "stances": ["supports", "questions", "rejects", "complicates"],
-        "tags": [],
+        "stances": answers.get("lens_stances") or ["supports", "questions", "rejects", "complicates"],
+        "tags": answers.get("lens_tags") or [],
     }
     config["llm"]["provider"] = provider
     config["llm"]["model"] = model
@@ -287,6 +304,9 @@ def cmd_init(args: argparse.Namespace) -> int:
     print(f"Provider: {answers['provider']}")
     if answers["model"]:
         print(f"Model: {answers['model']}")
+    if getattr(args, "lens_template", None):
+        print(f"Lens template: {args.lens_template}")
+    print(f"Lens: {answers['lens_name']}")
     if answers["api_key_env"]:
         print(f"API key env: {answers['api_key_env']}")
 
@@ -699,6 +719,75 @@ def cmd_skill_install(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_lenses_list(args: argparse.Namespace) -> int:
+    catalog = lens_catalog()
+    if not catalog:
+        print("No lens templates found.")
+        return 0
+    width = max(len(row["name"]) for row in catalog)
+    print("Lens templates -- start here instead of inventing a lens:\n")
+    for row in catalog:
+        suffix = "  (yours)" if row["origin"] == "user" else ""
+        print(f"  {row['name'].ljust(width)}  {row['summary']}{suffix}")
+    print("\nShow one:    doxa lenses show <name>")
+    print("Use one:     doxa init --lens-template <name>")
+    print("Make one:    doxa lenses add <name> --from <name>")
+    print(f"Your lenses: {user_lens_dir()}")
+    return 0
+
+
+def cmd_lenses_show(args: argparse.Namespace) -> int:
+    import yaml
+
+    template = get_lens_template(args.name)
+    print(f"# lens template: {args.name}")
+    if template.get("summary"):
+        print(f"# {template['summary']}")
+    print()
+    print(yaml.safe_dump({"lens": template_to_config_lens(template)}, sort_keys=False, allow_unicode=True).rstrip())
+    print()
+    print(f"Use it:  doxa init --lens-template {args.name}")
+    print(f"Fork it: doxa lenses add my-{args.name} --from {args.name}")
+    return 0
+
+
+def cmd_lenses_add(args: argparse.Namespace) -> int:
+    if args.file:
+        import yaml
+
+        template = yaml.safe_load(Path(args.file).read_text(encoding="utf-8")) or {}
+        if not isinstance(template, dict):
+            raise DoxaError("lens file must be a YAML mapping")
+    elif args.from_template:
+        template = dict(get_lens_template(args.from_template))
+    else:
+        template = {}
+    if args.summary:
+        template["summary"] = args.summary
+    if args.description:
+        template["description"] = args.description
+    if args.question:
+        template["question"] = args.question
+    if not template.get("description"):
+        raise DoxaError("a lens needs a description -- pass --from <template>, --file <yaml>, or --description")
+    path = save_user_lens(args.name, template)
+    print(f"Saved lens '{args.name}' -> {path}")
+    print("Edit that file to make it yours, then:")
+    print(f"  doxa init --lens-template {args.name}")
+    return 0
+
+
+def cmd_lenses_remove(args: argparse.Namespace) -> int:
+    path = remove_user_lens(args.name)
+    print(f"Removed user lens '{args.name}' ({path}).")
+    return 0
+
+
+def cmd_lenses_path(args: argparse.Namespace) -> int:
+    print(user_lens_dir())
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="doxa",
@@ -732,6 +821,7 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--lens", help="Lens description.")
     init.add_argument("--lens-name", help="Lens name.")
     init.add_argument("--lens-question", help="Guiding question for the lens.")
+    init.add_argument("--lens-template", help="Seed the lens from a built-in or user template (see `doxa lenses list`).")
     init.add_argument("--full", action="store_true", help="Write the full documented config instead of the compact starter config.")
     init.set_defaults(func=cmd_init)
 
@@ -862,6 +952,27 @@ def build_parser() -> argparse.ArgumentParser:
     install.add_argument("--scope", choices=["user", "project"], default="user")
     install.add_argument("--dest")
     install.set_defaults(func=cmd_skill_install)
+
+    lenses = subparsers.add_parser("lenses", help="Browse and manage lens templates (the library of starting lenses).")
+    lenses_sub = lenses.add_subparsers(dest="lenses_command", required=True)
+    l_list = lenses_sub.add_parser("list", help="List built-in and user lens templates.")
+    l_list.set_defaults(func=cmd_lenses_list)
+    l_show = lenses_sub.add_parser("show", help="Show a lens template as a copy-pasteable lens: block.")
+    l_show.add_argument("name")
+    l_show.set_defaults(func=cmd_lenses_show)
+    l_add = lenses_sub.add_parser("add", help="Save a user lens template (fork a built-in or supply your own).")
+    l_add.add_argument("name")
+    l_add.add_argument("--from", dest="from_template", help="Fork an existing template by name.")
+    l_add.add_argument("--file", help="Load the lens from a YAML file.")
+    l_add.add_argument("--summary", help="One-line summary for `doxa lenses list`.")
+    l_add.add_argument("--description", help="Lens description (what to mine).")
+    l_add.add_argument("--question", help="Guiding question for the lens.")
+    l_add.set_defaults(func=cmd_lenses_add)
+    l_remove = lenses_sub.add_parser("remove", help="Remove a user lens template.")
+    l_remove.add_argument("name")
+    l_remove.set_defaults(func=cmd_lenses_remove)
+    l_path = lenses_sub.add_parser("path", help="Print the user lens directory.")
+    l_path.set_defaults(func=cmd_lenses_path)
 
     return parser
 

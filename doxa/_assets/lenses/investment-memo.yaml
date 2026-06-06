@@ -1,0 +1,22 @@
+# doxa lens template: investment-memo
+# Backing a company: thesis, risks, and what would have to be true.
+# Fork it:  doxa lenses add my-investment-memo --from investment-memo
+
+name: investment-memo
+summary: 'Backing a company: thesis, risks, and what would have to be true.'
+description: Extract claims relevant to an investment decision -- market, moat, team, traction, risks,
+  and the conditions under which the bet pays off. Keep evidence separate from assertion, and capture
+  the bear case as carefully as the bull case.
+question: What does this source imply about whether this is a good bet, and what would have to be true?
+stances:
+- bull-case
+- bear-case
+- key-risk
+- assumption
+tags:
+- market
+- moat
+- team
+- traction
+- risk
+- valuation
