@@ -5,13 +5,15 @@ from __future__ import annotations
 import argparse
 from copy import deepcopy
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
 from .answer import render_terminal_answer
-from .banner import render_banner
+from .banner import render_banner, should_use_color
 from .config import DEFAULT_CONFIG, data_dir, load_config
+from .guide import guide_text, overview_text
 from .domains import (
     add_domain_weight,
     chart as domain_chart,
@@ -83,7 +85,44 @@ DEFAULT_LENS = {
 
 def _print_error(exc: Exception) -> int:
     print(f"error: {exc}", file=sys.stderr)
+    hint = _error_hint(exc)
+    if hint:
+        print(f"hint: {hint}", file=sys.stderr)
     return 2
+
+
+def _error_hint(exc: Exception) -> str:
+    """Map a raw error to one actionable next step, for humans at a prompt."""
+
+    text = str(exc).lower()
+    if any(s in text for s in ("no such file", "does not exist", "not found", "cannot find")):
+        if any(s in text for s in ("config", ".yaml", ".yml")):
+            return "create one with `doxa init`, or point at it with --config <path>."
+        return "check the path, or run `doxa demo` to try the bundled data."
+    if any(s in text for s in ("api key", "api_key", "environment variable")):
+        return "set the API key env var, or use a no-key provider: `doxa init --provider codex-cli`."
+    if any(s in text for s in ("binary", "on path", "command not found", "executable")):
+        return "install that provider's CLI, or switch providers with `doxa init`."
+    if "yaml" in text:
+        return "your doxa.yaml may be malformed; regenerate it with `doxa init --force`."
+    return ""
+
+
+def _hint(message: str) -> None:
+    """Print a human-facing hint to stderr (kept off stdout so --json stays clean)."""
+
+    sys.stdout.flush()
+    print(message, file=sys.stderr)
+
+
+def _stdout_color() -> bool:
+    return should_use_color("auto", sys.stdout)
+
+
+def _is_demo_fallback(config: dict[str, Any]) -> bool:
+    """True when no user config was found and doxa fell back to bundled demo data."""
+
+    return not config.get("_config_path")
 
 
 def _resolve_init_dest(path: str) -> Path:
@@ -233,6 +272,16 @@ def cmd_init(args: argparse.Namespace) -> int:
         print(f"Model: {answers['model']}")
     if answers["api_key_env"]:
         print(f"API key env: {answers['api_key_env']}")
+
+    in_cwd = dest.name in ("doxa.yaml", "doxa.yml") and dest.resolve().parent == Path.cwd().resolve()
+    cfg = "" if in_cwd else f" --config {dest}"
+    print("")
+    print("Next steps:")
+    if answers["api_key_env"]:
+        print(f"  0. export {answers['api_key_env']}=...           set your provider API key")
+    print(f"  1. doxa ingest <file|url|->{cfg}      mine your first source")
+    print(f'  2. doxa query "<question>"{cfg}       ask -- answers cite verbatim quotes')
+    print("  (new to doxa? run `doxa guide` for the full walkthrough.)")
     return 0
 
 
@@ -258,6 +307,8 @@ def cmd_ingest(args: argparse.Namespace) -> int:
         print(f"Dropped unverifiable quotes: {len(result.dropped_quotes)}")
     if result.dropped_beliefs:
         print(f"Dropped unanchored beliefs: {len(result.dropped_beliefs)}")
+    if sys.stdout.isatty():
+        _hint('Next: doxa query "<question>"   |   doxa eval   |   doxa status')
     return 0
 
 
@@ -280,8 +331,17 @@ def _format_result(result: RetrievalResult, index: int) -> str:
     return "\n".join(lines)
 
 
+def _store_has_beliefs(config: dict[str, Any]) -> bool:
+    try:
+        return bool(JsonlStore(config).beliefs())
+    except Exception:  # noqa: BLE001 - if unsure, don't claim the base is empty
+        return True
+
+
 def cmd_query(args: argparse.Namespace) -> int:
     config = load_config(args.config)
+    if not args.json and _is_demo_fallback(config):
+        _hint("note: no doxa.yaml here -- querying the bundled demo base. Run `doxa init` to build your own.")
     domains = parse_domain_selectors(args.domain, args.domains)
     results, warnings = search(
         args.query,
@@ -298,6 +358,11 @@ def cmd_query(args: argparse.Namespace) -> int:
         return 0
     if not results:
         print("No matching beliefs found.")
+        if not args.json:
+            if not _is_demo_fallback(config) and not _store_has_beliefs(config):
+                _hint("hint: your belief base is empty -- ingest a source: doxa ingest <file|url|->   (or try `doxa demo`).")
+            else:
+                _hint("hint: try broader terms, --search hybrid, or a higher --limit.")
         return 0
     if args.answer:
         print(render_terminal_answer(args.query, results))
@@ -309,6 +374,8 @@ def cmd_query(args: argparse.Namespace) -> int:
 
 def cmd_eval(args: argparse.Namespace) -> int:
     config = load_config(args.config)
+    if not args.json and _is_demo_fallback(config):
+        _hint("note: no doxa.yaml here -- evaluating the bundled demo base.")
     report = faithfulness_report(config)
     if args.json:
         print(json.dumps(report, indent=2, ensure_ascii=False))
@@ -348,6 +415,35 @@ def cmd_demo(args: argparse.Namespace) -> int:
 
 def cmd_banner(args: argparse.Namespace) -> int:
     sys.stdout.write(render_banner(color=args.color, stream=sys.stdout))
+    return 0
+
+
+def cmd_guide(args: argparse.Namespace) -> int:
+    print(guide_text(color=_stdout_color()))
+    return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    config = load_config(getattr(args, "config", None))
+    store = JsonlStore(config)
+    try:
+        n_beliefs, n_quotes, n_sources = len(store.beliefs()), len(store.quotes()), len(store.sources())
+    except Exception:  # noqa: BLE001 - a broken/missing store should still print a status
+        n_beliefs = n_quotes = n_sources = 0
+    llm = config.get("llm", {})
+    cfg_path = config.get("_config_path") or "(none -- using bundled demo)"
+    print(f"config:    {cfg_path}")
+    print(f"data dir:  {data_dir(config)}")
+    print(f"beliefs:   {n_beliefs}")
+    print(f"quotes:    {n_quotes}")
+    print(f"sources:   {n_sources}")
+    print(f"provider:  {llm.get('provider', '?')}  (model: {llm.get('model') or 'provider default'})")
+    dsn_env = config.get("postgres", {}).get("dsn_env", "DOXA_POSTGRES_DSN")
+    print(f"semantic:  {'ready' if os.environ.get(dsn_env) else f'off (set {dsn_env}, then doxa index)'}")
+    if _is_demo_fallback(config):
+        _hint("note: no doxa.yaml here -- run `doxa init` to start your own belief base.")
+    elif n_beliefs == 0:
+        _hint("hint: your base is empty -- ingest a source: doxa ingest <file|url|->")
     return 0
 
 
@@ -422,8 +518,25 @@ def cmd_skill_install(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="doxa", description="Build and query a verbatim-grounded belief base.")
-    subparsers = parser.add_subparsers(dest="command", required=False)
+    parser = argparse.ArgumentParser(
+        prog="doxa",
+        description="Build and query a verbatim-grounded belief base -- every answer cites a real quote.",
+        epilog=(
+            "quickstart:\n"
+            "  doxa demo                   try it on bundled public-domain data\n"
+            "  doxa init                   create your own base (writes doxa.yaml)\n"
+            "  doxa ingest <file|url|->    mine a source into beliefs + quotes\n"
+            '  doxa query "<question>"     ask -- answers cite verbatim quotes\n'
+            "\n"
+            "  doxa guide                  full walkthrough for humans\n"
+            "  doxa status                 where things stand\n"
+            "  doxa skill install --harness claude-code   drive doxa from an AI agent\n"
+            "\n"
+            "run `doxa` with no command for a quick start, or `doxa <command> -h` for details."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    subparsers = parser.add_subparsers(dest="command", required=False, metavar="<command>")
 
     init = subparsers.add_parser("init", help="Create a documented doxa.yaml config.")
     init.add_argument("path", nargs="?", default="doxa.yaml")
@@ -485,6 +598,13 @@ def build_parser() -> argparse.ArgumentParser:
     banner.add_argument("--ansi", action="store_const", dest="color", const="always", help="Alias for --color always.")
     banner.set_defaults(func=cmd_banner)
 
+    guide = subparsers.add_parser("guide", help="Print a guided walkthrough (for humans new to doxa).")
+    guide.set_defaults(func=cmd_guide)
+
+    status = subparsers.add_parser("status", help="Show config, data location, and belief/quote counts.")
+    status.add_argument("--config")
+    status.set_defaults(func=cmd_status)
+
     domains = subparsers.add_parser("domains", help="View or edit domain retrieval preferences.")
     domains.add_argument("--config")
     domains.set_defaults(func=cmd_domains)
@@ -532,14 +652,22 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if getattr(args, "func", None) is None:
-        # No subcommand: greet with the banner, then show usage.
+        # No subcommand: greet with the banner + a curated "start here" landing.
         sys.stdout.write(render_banner(color="auto", stream=sys.stdout))
+        sys.stdout.write("\n\n")
+        sys.stdout.write(overview_text(color=_stdout_color()))
         sys.stdout.write("\n")
-        parser.print_help()
         return 0
     try:
         return int(args.func(args))
     except DoxaError as exc:
+        return _print_error(exc)
+    except KeyboardInterrupt:  # pragma: no cover - interactive only
+        print("\naborted.", file=sys.stderr)
+        return 130
+    except Exception as exc:  # noqa: BLE001 - last resort: friendly error, never a raw traceback
+        if os.environ.get("DOXA_DEBUG"):
+            raise
         return _print_error(exc)
 
 
