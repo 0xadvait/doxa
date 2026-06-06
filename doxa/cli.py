@@ -6,6 +6,7 @@ import argparse
 from copy import deepcopy
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -32,7 +33,7 @@ from .resources import demo_config_path, skill_text
 from .schema import DoxaError, RetrievalResult
 from .sources import load_source
 from .sources.fetchers import INGEST_MODES, available_fetchers, build_fetch_prompt
-from .store import JsonlStore, index_postgres
+from .store import JsonlStore, index_postgres, postgres_table_prefix
 
 
 FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1"
@@ -225,8 +226,17 @@ def _init_answers(args: argparse.Namespace, *, interactive: bool) -> dict[str, s
     }
 
 
-def _build_init_config(answers: dict[str, str]) -> dict[str, Any]:
-    config = deepcopy(DEFAULT_CONFIG)
+def _build_init_config(answers: dict[str, str], *, full: bool = False) -> dict[str, Any]:
+    if full:
+        config: dict[str, Any] = deepcopy(DEFAULT_CONFIG)
+    else:
+        config = {
+            "project": {"name": "my-belief-base"},
+            "data": {"dir": "data"},
+            "lens": {},
+            "llm": {"provider": answers["provider"], "model": answers["model"], "temperature": 0},
+            "providers": {answers["provider"]: deepcopy(DEFAULT_CONFIG["providers"].get(answers["provider"], {}))},
+        }
     provider = answers["provider"]
     model = answers["model"]
     config["project"]["name"] = "my-belief-base"
@@ -269,7 +279,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         print("doxa init: configure belief mining")
         print("Press Enter to accept any default.")
     answers = _init_answers(args, interactive=interactive)
-    _write_yaml_config(dest, _build_init_config(answers))
+    _write_yaml_config(dest, _build_init_config(answers, full=args.full))
     config = load_config(dest, allow_demo_default=False)
     data_dir(config).mkdir(parents=True, exist_ok=True)
     print(f"Created {dest}")
@@ -521,6 +531,56 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_doctor(args: argparse.Namespace) -> int:
+    """Check common local setup problems without mining or fetching anything."""
+
+    issues: list[str] = []
+    try:
+        config = load_config(getattr(args, "config", None), allow_demo_default=False)
+    except Exception as exc:
+        print(f"config: FAIL ({exc})")
+        return 1
+    print(f"config: OK ({config.get('_config_path') or 'defaults'})")
+    try:
+        postgres_table_prefix(config)
+        print("postgres table prefix: OK")
+    except Exception as exc:
+        issues.append(f"postgres table prefix: {exc}")
+        print(f"postgres table prefix: FAIL ({exc})")
+    store = JsonlStore(config)
+    try:
+        counts = (len(store.beliefs()), len(store.quotes()), len(store.sources()))
+        print(f"store: OK ({counts[0]} beliefs, {counts[1]} quotes, {counts[2]} sources)")
+    except Exception as exc:
+        issues.append(f"store: {exc}")
+        print(f"store: FAIL ({exc})")
+    provider = str((config.get("llm") or {}).get("provider") or "codex-cli")
+    provider_config = (config.get("providers") or {}).get(provider, {})
+    if provider in {"codex-cli", "claude-cli"}:
+        binary = str(provider_config.get("binary") or ("codex" if provider == "codex-cli" else "claude"))
+        if shutil.which(binary):
+            print(f"provider: OK ({provider}, binary {binary})")
+        else:
+            issues.append(f"provider binary not found: {binary}")
+            print(f"provider: FAIL ({provider} binary not found: {binary})")
+    else:
+        api_key_env = str(provider_config.get("api_key_env") or "")
+        if api_key_env and not os.environ.get(api_key_env):
+            issues.append(f"provider env var not set: {api_key_env}")
+            print(f"provider: FAIL ({provider}, set {api_key_env})")
+        else:
+            print(f"provider: OK ({provider})")
+    dsn_env = str((config.get("postgres") or {}).get("dsn_env") or "DOXA_POSTGRES_DSN")
+    print(f"semantic index: {'configured' if os.environ.get(dsn_env) else f'off (set {dsn_env} to enable)'}")
+    if issues:
+        print("\nDoctor found issues:")
+        for issue in issues:
+            print(f"  - {issue}")
+        return 1
+    print("\nDoctor found no blocking issues.")
+    return 0
+
+
 def cmd_sources(args: argparse.Namespace) -> int:
     command = getattr(args, "sources_command", None) or "list"
     config = load_config(getattr(args, "config", None))
@@ -537,16 +597,19 @@ def cmd_sources(args: argparse.Namespace) -> int:
         print("No sources ingested yet.")
         _hint("add one: doxa ingest <file|url|->")
         return 0
-    from collections import Counter
-
     beliefs = store.beliefs()
     quotes = store.quotes()
-    b_by = Counter((b.source.title, b.source.url) for b in beliefs)
-    q_by = Counter((q.source.title, q.source.url) for q in quotes)
+
+    def source_matches(ref, source) -> bool:
+        if getattr(ref, "id", ""):
+            return ref.id == source.id
+        return (ref.title, ref.url) == (source.title, source.url)
+
     print(f"{len(sources)} source(s):")
     for source in sources:
-        key = (source.title, source.url)
-        print(f"  {source.id}  {source.title}  [beliefs {b_by.get(key, 0)}, quotes {q_by.get(key, 0)}]")
+        belief_count = sum(1 for belief in beliefs if source_matches(belief.source, source))
+        quote_count = sum(1 for quote in quotes if source_matches(quote.source, source))
+        print(f"  {source.id}  {source.title}  [beliefs {belief_count}, quotes {quote_count}]")
         location = source.url or source.path
         if location:
             print(f"      {location}")
@@ -657,6 +720,7 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--lens", help="Lens description.")
     init.add_argument("--lens-name", help="Lens name.")
     init.add_argument("--lens-question", help="Guiding question for the lens.")
+    init.add_argument("--full", action="store_true", help="Write the full documented config instead of the compact starter config.")
     init.set_defaults(func=cmd_init)
 
     ingest = subparsers.add_parser("ingest", help="Ingest one or more sources (text, PDF, URL, YouTube, or '-' from stdin).")
@@ -725,6 +789,10 @@ def build_parser() -> argparse.ArgumentParser:
     status = subparsers.add_parser("status", help="Show config, data location, and belief/quote counts.")
     status.add_argument("--config")
     status.set_defaults(func=cmd_status)
+
+    doctor = subparsers.add_parser("doctor", help="Check config, storage, provider, and semantic-index readiness.")
+    doctor.add_argument("--config")
+    doctor.set_defaults(func=cmd_doctor)
 
     sources_p = subparsers.add_parser("sources", help="List or remove ingested sources.")
     sources_p.add_argument("--config")

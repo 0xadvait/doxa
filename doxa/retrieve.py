@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 import json
 import math
@@ -10,10 +10,10 @@ import re
 from typing import Any
 
 from .domains import active_domain_weights, domain_aliases, domain_multiplier_for_result
-from .embed import embed_query, embed_texts
+from .embed import embed_query
 from .schema import Belief, DoxaError, Quote, RetrievalResult
 from .stem import STOPWORDS, stem as _stem
-from .store import JsonlStore, postgres_connect
+from .store import JsonlStore, postgres_connect, postgres_table_prefix
 
 
 TOKEN_RE = re.compile(r"[A-Za-z0-9']+")
@@ -213,7 +213,7 @@ def keyword_search(
     literal_doc_scores = _bm25_scores(query_terms, doc_terms, k1=k1, b=b)
     if not literal_doc_scores:
         return []
-    combined_doc_scores: Counter[int] = Counter()
+    combined_doc_scores: defaultdict[int, float] = defaultdict(float)
     for doc_index, raw_score in literal_doc_scores:
         combined_doc_scores[doc_index] += raw_score
     # Precision: reward docs that contain the exact contiguous query phrase, so a
@@ -236,8 +236,8 @@ def keyword_search(
         ):
             combined_doc_scores[doc_index] += raw_score * domain_query_boost
     doc_scores = sorted(combined_doc_scores.items(), key=lambda item: (-item[1], item[0]))
-    belief_scores: Counter[str] = Counter()
-    matched_quote_scores: dict[str, Counter[str]] = {}
+    belief_scores: defaultdict[str, float] = defaultdict(float)
+    matched_quote_scores: dict[str, defaultdict[str, float]] = {}
     for doc_index, raw_score in doc_scores:
         doc = docs[doc_index]
         if doc.kind == "belief":
@@ -250,7 +250,7 @@ def keyword_search(
             if belief_id not in by_belief:
                 continue
             belief_scores[belief_id] += quote_score
-            matched_quote_scores.setdefault(belief_id, Counter())[doc.quote.id] += quote_score
+            matched_quote_scores.setdefault(belief_id, defaultdict(float))[doc.quote.id] += quote_score
     if not belief_scores:
         return []
     if rank_domain_boost is None:
@@ -259,7 +259,7 @@ def keyword_search(
     quote_order = {quote.id: index for index, quote in enumerate(quotes)}
     grouped: list[RetrievalResult] = []
     for belief_id, score in belief_scores.items():
-        matched = matched_quote_scores.get(belief_id, Counter())
+        matched = matched_quote_scores.get(belief_id, defaultdict(float))
         matched_quotes = sorted(
             (quote_by_id[quote_id] for quote_id in matched if quote_id in quote_by_id),
             key=lambda quote: (-matched[quote.id], quote_order.get(quote.id, 0)),
@@ -294,17 +294,22 @@ def semantic_search(
 
     candidate_limit = max(candidate_limit or limit, limit)
     vector = embed_query(query, config)
-    prefix = str(config.get("postgres", {}).get("table_prefix", "doxa"))
+    from psycopg2 import sql
+
+    prefix = postgres_table_prefix(config)
+    beliefs_table = f"{prefix}_beliefs"
     conn = postgres_connect(config)
     try:
         with conn.cursor() as cur:
             cur.execute(
-                f"""
+                sql.SQL(
+                    """
                 SELECT payload, 1 - (embedding <=> %s::vector) AS score
-                FROM {prefix}_beliefs
+                FROM {}
                 ORDER BY embedding <=> %s::vector
                 LIMIT %s
-                """,
+                """
+                ).format(sql.Identifier(beliefs_table)),
                 (vector, vector, candidate_limit),
             )
             rows = cur.fetchall()
@@ -315,7 +320,9 @@ def semantic_search(
     scored: list[tuple[Belief, float]] = []
     for payload, score in rows:
         raw = payload if isinstance(payload, dict) else json.loads(payload)
-        belief = by_id.get(str(raw.get("id"))) or Belief.from_dict(raw)
+        belief = by_id.get(str(raw.get("id")))
+        if belief is None:
+            continue
         scored.append((belief, float(score)))
     return _rank_results(
         store.linked_results(scored),
@@ -335,7 +342,7 @@ def reciprocal_rank_fusion(
     max_quotes_per_result: int | None = None,
 ) -> list[RetrievalResult]:
     by_id: dict[str, RetrievalResult] = {}
-    scores: Counter[str] = Counter()
+    scores: defaultdict[str, float] = defaultdict(float)
     for ranking in rankings:
         for rank, result in enumerate(ranking, start=1):
             if result.belief.id in by_id:

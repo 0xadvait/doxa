@@ -5,10 +5,26 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 from typing import Any, Iterable
 
 from .config import data_file
 from .schema import Belief, DoxaError, Quote, RetrievalResult, SourceRecord
+
+
+_SQL_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def postgres_table_prefix(config: dict[str, Any]) -> str:
+    """Return a safe Postgres table prefix for dynamic identifiers."""
+
+    prefix = str(config.get("postgres", {}).get("table_prefix", "doxa"))
+    if not _SQL_IDENTIFIER_RE.fullmatch(prefix):
+        raise DoxaError(
+            "postgres.table_prefix must be a SQL identifier: start with a letter/underscore "
+            "and contain only letters, numbers, and underscores."
+        )
+    return prefix
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -79,12 +95,19 @@ class JsonlStore:
         target = next((source for source in sources if source.id == source_id), None)
         if target is None:
             raise DoxaError(f"No ingested source with id '{source_id}'. Run `doxa sources list`.")
-        key = (target.title, target.url)
+        legacy_key = (target.title, target.url)
+
+        def matches_target(ref) -> bool:
+            ref_id = getattr(ref, "id", "")
+            if ref_id:
+                return ref_id == source_id
+            return (ref.title, ref.url) == legacy_key
+
         beliefs = self.beliefs()
         quotes = self.quotes()
-        kept_beliefs = [b for b in beliefs if (b.source.title, b.source.url) != key]
-        kept_quotes = [q for q in quotes if (q.source.title, q.source.url) != key]
-        kept_sources = [s for s in sources if s.id != source_id]
+        kept_beliefs = [belief for belief in beliefs if not matches_target(belief.source)]
+        kept_quotes = [quote for quote in quotes if not matches_target(quote.source)]
+        kept_sources = [source for source in sources if source.id != source_id]
         self.write_all(kept_beliefs, kept_quotes, kept_sources)
         return {
             "beliefs": len(beliefs) - len(kept_beliefs),
@@ -124,6 +147,8 @@ def postgres_connect(config: dict[str, Any]):
 def index_postgres(config: dict[str, Any]) -> dict[str, int]:
     """Create/update a pgvector index from JSONL data."""
 
+    from psycopg2 import sql
+
     from .embed import embed_texts
 
     store = JsonlStore(config)
@@ -131,65 +156,97 @@ def index_postgres(config: dict[str, Any]) -> dict[str, int]:
     quotes = store.quotes()
     if not beliefs:
         raise DoxaError(f"No beliefs found at {store.beliefs_path}")
-    prefix = str(config.get("postgres", {}).get("table_prefix", "doxa"))
+    prefix = postgres_table_prefix(config)
+    beliefs_table = f"{prefix}_beliefs"
+    quotes_table = f"{prefix}_quotes"
+    links_table = f"{prefix}_belief_quotes"
+    index_name = f"{prefix}_beliefs_embedding_hnsw"
     dimension = int(config.get("embeddings", {}).get("dimension", 384))
+    if dimension <= 0 or dimension > 8192:
+        raise DoxaError("embeddings.dimension must be between 1 and 8192.")
     # Open the DB connection before embedding so DSN/connectivity errors fail fast,
     # rather than after a slow embed (which can download a model on first run).
     conn = postgres_connect(config)
     texts = [belief.belief + "\n" + belief.reasoning for belief in beliefs]
     vectors = embed_texts(texts, config)
+    belief_ids = [belief.id for belief in beliefs]
+    quote_ids = [quote.id for quote in quotes]
     try:
         with conn, conn.cursor() as cur:
             cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
             cur.execute(
-                f"""
-                CREATE TABLE IF NOT EXISTS {prefix}_beliefs (
+                sql.SQL(
+                    """
+                CREATE TABLE IF NOT EXISTS {} (
                   id text PRIMARY KEY,
                   payload jsonb NOT NULL,
-                  embedding vector({dimension})
+                  embedding vector({})
                 )
                 """
+                ).format(sql.Identifier(beliefs_table), sql.SQL(str(dimension)))
             )
             cur.execute(
-                f"""
-                CREATE TABLE IF NOT EXISTS {prefix}_quotes (
+                sql.SQL(
+                    """
+                CREATE TABLE IF NOT EXISTS {} (
                   id text PRIMARY KEY,
                   payload jsonb NOT NULL
                 )
                 """
+                ).format(sql.Identifier(quotes_table))
             )
             cur.execute(
-                f"""
-                CREATE TABLE IF NOT EXISTS {prefix}_belief_quotes (
+                sql.SQL(
+                    """
+                CREATE TABLE IF NOT EXISTS {} (
                   belief_id text NOT NULL,
                   quote_id text NOT NULL,
                   PRIMARY KEY (belief_id, quote_id)
                 )
                 """
+                ).format(sql.Identifier(links_table))
             )
             for belief, vector in zip(beliefs, vectors):
                 cur.execute(
-                    f"INSERT INTO {prefix}_beliefs (id, payload, embedding) VALUES (%s, %s, %s) "
-                    f"ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload, embedding = EXCLUDED.embedding",
+                    sql.SQL(
+                        "INSERT INTO {} (id, payload, embedding) VALUES (%s, %s, %s) "
+                        "ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload, embedding = EXCLUDED.embedding"
+                    ).format(sql.Identifier(beliefs_table)),
                     (belief.id, json.dumps(belief.to_dict()), vector),
                 )
             for quote in quotes:
                 cur.execute(
-                    f"INSERT INTO {prefix}_quotes (id, payload) VALUES (%s, %s) "
-                    f"ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload",
+                    sql.SQL(
+                        "INSERT INTO {} (id, payload) VALUES (%s, %s) "
+                        "ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload"
+                    ).format(sql.Identifier(quotes_table)),
                     (quote.id, json.dumps(quote.to_dict())),
                 )
+            cur.execute(sql.SQL("DELETE FROM {}").format(sql.Identifier(links_table)))
+            for quote in quotes:
                 for belief_id in quote.belief_ids:
                     cur.execute(
-                        f"INSERT INTO {prefix}_belief_quotes (belief_id, quote_id) VALUES (%s, %s) "
-                        f"ON CONFLICT DO NOTHING",
+                        sql.SQL("INSERT INTO {} (belief_id, quote_id) VALUES (%s, %s) ON CONFLICT DO NOTHING").format(
+                            sql.Identifier(links_table)
+                        ),
                         (belief_id, quote.id),
                     )
             cur.execute(
-                f"CREATE INDEX IF NOT EXISTS {prefix}_beliefs_embedding_hnsw "
-                f"ON {prefix}_beliefs USING hnsw (embedding vector_cosine_ops)"
+                sql.SQL("DELETE FROM {} WHERE NOT (id = ANY(%s))").format(sql.Identifier(beliefs_table)),
+                (belief_ids,),
+            )
+            if quote_ids:
+                cur.execute(
+                    sql.SQL("DELETE FROM {} WHERE NOT (id = ANY(%s))").format(sql.Identifier(quotes_table)),
+                    (quote_ids,),
+                )
+            else:
+                cur.execute(sql.SQL("DELETE FROM {}").format(sql.Identifier(quotes_table)))
+            cur.execute(
+                sql.SQL("CREATE INDEX IF NOT EXISTS {} ON {} USING hnsw (embedding vector_cosine_ops)").format(
+                    sql.Identifier(index_name), sql.Identifier(beliefs_table)
+                )
             )
     finally:
         conn.close()
     return {"beliefs": len(beliefs), "quotes": len(quotes)}
-

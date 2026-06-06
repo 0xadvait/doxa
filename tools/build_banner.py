@@ -35,10 +35,10 @@ def _crop(img: Image.Image, floor: int = 28) -> Image.Image:
     g = img.convert("L")
     bb = g.point(lambda p: 255 if p > floor else 0).getbbox()
     if bb:
-        l, t, r, b = bb
+        left, top, right, bottom = bb
         m = 2
-        img = img.crop((max(0, l - m), max(0, t - m),
-                        min(img.width, r + m), min(img.height, b + m)))
+        img = img.crop((max(0, left - m), max(0, top - m),
+                        min(img.width, right + m), min(img.height, bottom + m)))
     return img
 
 
@@ -48,7 +48,8 @@ def to_braille(path: pathlib.Path, cols: int, thresh: int) -> list[str]:
     dots_w = cols * 2
     rows = max(1, round(dots_w * Hc / Wc / 4))
     img = img.resize((dots_w, rows * 4), Image.LANCZOS)
-    px = img.load(); W, H = img.size
+    px = img.load()
+    W, H = img.size
     out = []
     for by in range(0, H, 4):
         line = ""

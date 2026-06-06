@@ -105,6 +105,12 @@ def mine_source(
         raw = parse_provider_json(provider.complete(system, user))
         local_beliefs = [Belief.from_dict({**item, "source": item.get("source") or source_meta}) for item in raw.get("beliefs", [])]
         local_quotes = [Quote.from_dict({**item, "source": item.get("source") or source_meta}) for item in raw.get("quotes", [])]
+        for belief in local_beliefs:
+            if not belief.source.id:
+                belief.source.id = source.id
+        for quote in local_quotes:
+            if not quote.source.id:
+                quote.source.id = source.id
 
         id_map = {belief.id: _stable_id("b", source.id, chunk_index, belief.id) for belief in local_beliefs}
         for belief in local_beliefs:

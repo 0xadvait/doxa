@@ -62,6 +62,7 @@ class SourceRef:
     author: str = ""
     date: str = ""
     url: str = ""
+    id: str = ""
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any] | None) -> "SourceRef":
@@ -72,15 +73,19 @@ class SourceRef:
             author=str(raw.get("author") or "").strip(),
             date=str(raw.get("date") or "").strip(),
             url=str(raw.get("url") or "").strip(),
+            id=str(raw.get("id") or raw.get("source_id") or "").strip(),
         )
 
     def to_dict(self) -> dict[str, str]:
-        return {
+        data = {
             "title": self.title,
             "author": self.author,
             "date": self.date,
             "url": self.url,
         }
+        if self.id:
+            data["id"] = self.id
+        return data
 
 
 @dataclass(slots=True)
@@ -185,7 +190,7 @@ class SourceRecord:
 
     @property
     def ref(self) -> SourceRef:
-        return SourceRef(title=self.title, author=self.author, date=self.date, url=self.url)
+        return SourceRef(title=self.title, author=self.author, date=self.date, url=self.url, id=self.id)
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "SourceRecord":
