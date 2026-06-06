@@ -14,6 +14,13 @@ lens:
   tags: [uncertainty, incentives, judgment]
 ```
 
+String shorthand also works -- it fills in sensible defaults for the name,
+guiding question, stances, and tags:
+
+```yaml
+lens: Extract claims about courage, duty, risk, and practical judgment.
+```
+
 Avoid asking for "everything interesting." The narrower the lens, the cleaner
 the belief base.
 
