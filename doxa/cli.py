@@ -31,6 +31,7 @@ from .retrieve import search
 from .resources import demo_config_path, skill_text
 from .schema import DoxaError, RetrievalResult
 from .sources import load_source
+from .sources.fetchers import available_fetchers
 from .store import JsonlStore, index_postgres
 
 
@@ -505,6 +506,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"provider:  {llm.get('provider', '?')}  (model: {llm.get('model') or 'provider default'})")
     dsn_env = config.get("postgres", {}).get("dsn_env", "DOXA_POSTGRES_DSN")
     print(f"semantic:  {'ready' if os.environ.get(dsn_env) else f'off (set {dsn_env}, then doxa index)'}")
+    print(f"fetcher:   {config.get('sources', {}).get('fetcher', 'requests')}")
     if _is_demo_fallback(config):
         _hint("note: no doxa.yaml here -- run `doxa init` to start your own belief base.")
     elif n_beliefs == 0:
@@ -657,7 +659,11 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--title", help="Override title metadata for the ingested source.")
     ingest.add_argument("--author", help="Override author metadata for the ingested source.")
     ingest.add_argument("--url", help="Attach source URL metadata for the ingested source.")
-    ingest.add_argument("--via", choices=["requests", "brightdata"], help="Override URL fetcher for this ingest.")
+    ingest.add_argument(
+        "--via",
+        choices=available_fetchers(),
+        help="Override the URL fetcher for this ingest (requests, jina, firecrawl, brightdata, command).",
+    )
     ingest.set_defaults(func=cmd_ingest)
 
     index = subparsers.add_parser("index", help="Build optional Postgres/pgvector semantic index.")

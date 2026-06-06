@@ -60,11 +60,16 @@ DEFAULT_CONFIG: dict[str, Any] = {
         },
     },
     "sources": {
+        # URL fetcher: requests (plain HTTP), jina (free reader), firecrawl, brightdata,
+        # or command (run any tool/MCP bridge). Override per-ingest with --via.
         "fetcher": "requests",
         "brightdata": {
             "api_token_env": "BRIGHTDATA_API_TOKEN",
             "zone_env": "BRIGHTDATA_ZONE",
         },
+        "jina": {"api_key_env": "JINA_API_KEY"},
+        "firecrawl": {"api_key_env": "FIRECRAWL_API_KEY"},
+        # command: { argv: ["my-scraper", "{url}"] }  # or { shell: "..." }; prints text to stdout
     },
     "retrieval": {
         "default_search": "keyword",
