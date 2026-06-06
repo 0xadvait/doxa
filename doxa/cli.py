@@ -13,7 +13,7 @@ from typing import Any
 
 from .answer import render_terminal_answer
 from .banner import render_banner, should_use_color
-from .config import DEFAULT_CONFIG, data_dir, load_config
+from .config import DEFAULT_CONFIG, data_dir, find_config_path, load_config
 from .guide import guide_text, overview_text
 from .domains import (
     add_domain_weight,
@@ -37,6 +37,7 @@ from .lenses import (
     template_to_config_lens,
     user_lens_dir,
 )
+from .packs import export_pack, get_pack, install_pack, load_registry
 from .resources import demo_config_path, skill_text
 from .schema import DoxaError, RetrievalResult
 from .sources import load_source
@@ -499,7 +500,7 @@ def cmd_query(args: argparse.Namespace) -> int:
         print("No matching beliefs found.")
         if not args.json:
             if not _is_demo_fallback(config) and not _store_has_beliefs(config):
-                _hint("hint: your belief base is empty -- ingest a source: doxa ingest <file|url|->   (or try `doxa demo`).")
+                _hint("hint: your belief base is empty -- get a head start with `doxa packs install startup-wisdom`, or ingest a source: doxa ingest <file|url|->.")
             else:
                 _hint("hint: try broader terms, raise --top, or --search hybrid if you've run `doxa index`.")
         return 0
@@ -593,7 +594,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     if _is_demo_fallback(config):
         _hint("note: no doxa.yaml here -- run `doxa init` to start your own belief base.")
     elif n_beliefs == 0:
-        _hint("hint: your base is empty -- ingest a source: doxa ingest <file|url|->")
+        _hint("hint: your base is empty -- install a starter pack (`doxa packs install startup-wisdom`) or ingest a source: doxa ingest <file|url|->.")
     return 0
 
 
@@ -822,6 +823,106 @@ def cmd_lenses_path(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_packs_list(args: argparse.Namespace) -> int:
+    registry = load_registry()
+    if not registry:
+        print("No starter packs available.")
+        return 0
+    print("Starter packs -- a curated belief base so doxa is useful right away:\n")
+    for pack in registry:
+        counts = ""
+        if pack.get("beliefs"):
+            counts = f"  [{pack['beliefs']} beliefs, {pack.get('quotes', 0)} quotes]"
+        print(f"  {pack['name']}{counts}")
+        print(f"      {pack.get('summary', '')}")
+    print("\nDetails:  doxa packs info <name>")
+    print("Install:  doxa packs install <name>   (creates a base if you don't have one)")
+    return 0
+
+
+def cmd_packs_info(args: argparse.Namespace) -> int:
+    pack = get_pack(args.name)
+    print(f"{pack['name']}")
+    print(f"  {pack.get('summary', '')}\n")
+    if pack.get("beliefs"):
+        print(f"  Size:    {pack['beliefs']} beliefs, {pack.get('quotes', 0)} quotes")
+    if pack.get("lens"):
+        print(f"  Lens:    {pack['lens']}")
+    if pack.get("sources"):
+        print("  Sources:")
+        for src in pack["sources"]:
+            print(f"    - {src.get('title', '')}  {src.get('url', '')}")
+    if pack.get("license"):
+        print(f"  License: {pack['license']}")
+    print(f"\n  Install: doxa packs install {pack['name']}")
+    return 0
+
+
+def _auto_init_for_pack(name: str, dest_path: str) -> None:
+    """Create a fresh base for a pack install, seeded with the pack's suggested lens."""
+    dest = _resolve_init_dest(dest_path)
+    lens_name = DEFAULT_LENS["name"]
+    description = DEFAULT_LENS["description"]
+    question = DEFAULT_LENS["question"]
+    stances = ["supports", "questions", "rejects", "complicates"]
+    tags: list[str] = []
+    try:
+        meta = get_pack(name)
+        if meta.get("lens"):
+            template = get_lens_template(meta["lens"])
+            lens_name = template.get("name", lens_name)
+            description = template.get("description", description)
+            question = template.get("question", question)
+            stances = template.get("stances", stances)
+            tags = template.get("tags", tags)
+    except DoxaError:
+        pass
+    answers = {
+        "provider": "codex-cli", "model": "", "api_key_env": "", "base_url": "",
+        "lens_name": lens_name, "lens_description": description, "lens_question": question,
+        "lens_stances": stances, "lens_tags": tags,
+    }
+    _write_yaml_config(dest, _build_init_config(answers, full=False))
+    config = load_config(dest, allow_demo_default=False)
+    data_dir(config).mkdir(parents=True, exist_ok=True)
+    print(f"Created {dest} (new base for the pack)")
+
+
+def cmd_packs_install(args: argparse.Namespace) -> int:
+    config_file = Path(args.config).expanduser() if args.config else find_config_path()
+    if config_file is None or not Path(config_file).exists():
+        target = args.config or "doxa.yaml"
+        _auto_init_for_pack(args.name, target)
+        config_file = _resolve_init_dest(target)
+    config = load_config(config_file, allow_demo_default=False)
+    store = JsonlStore(config)
+    print(f"Installing pack '{args.name}' ...")
+    counts = install_pack(args.name, store)
+    print(f"Added {counts['beliefs']} beliefs, {counts['quotes']} quotes, {counts['sources']} sources"
+          + (f" (skipped {counts['skipped']} already present)" if counts.get("skipped") else "") + ".")
+    print('Try it:  doxa query "<question>" --answer')
+    return 0
+
+
+def cmd_packs_export(args: argparse.Namespace) -> int:
+    meta = {
+        "name": args.name,
+        "summary": args.summary or "",
+        "lens": args.lens or "",
+        "license": args.license or "",
+    }
+    counts = export_pack(
+        beliefs_path=args.beliefs,
+        quotes_path=args.quotes,
+        ingests=[t.strip() for t in args.ingest.split(",")] if args.ingest else None,
+        out_dir=args.out,
+        meta=meta,
+    )
+    print(f"Exported pack '{args.name}' to {args.out}: "
+          f"{counts['beliefs']} beliefs, {counts['quotes']} quotes, {counts['sources']} sources.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="doxa",
@@ -829,6 +930,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "quickstart:\n"
             "  doxa demo                   try it on bundled public-domain data\n"
+            "  doxa packs install startup-wisdom   optional: a ready-made founder/product/growth base\n"
             "  doxa init                   create your own base (writes doxa.yaml)\n"
             "  doxa ingest <file|url|->    mine a source into beliefs + quotes\n"
             '  doxa query "<question>"     ask -- answers cite verbatim quotes\n'
@@ -1007,6 +1109,28 @@ def build_parser() -> argparse.ArgumentParser:
     l_remove.set_defaults(func=cmd_lenses_remove)
     l_path = lenses_sub.add_parser("path", help="Print the user lens directory.")
     l_path.set_defaults(func=cmd_lenses_path)
+
+    packs = subparsers.add_parser("packs", help="Install a curated starter belief base (a head start instead of an empty base).")
+    packs_sub = packs.add_subparsers(dest="packs_command", required=True)
+    p_list = packs_sub.add_parser("list", help="List available starter packs.")
+    p_list.set_defaults(func=cmd_packs_list)
+    p_info = packs_sub.add_parser("info", help="Show a pack's sources, license, and size.")
+    p_info.add_argument("name")
+    p_info.set_defaults(func=cmd_packs_info)
+    p_install = packs_sub.add_parser("install", help="Install a pack into your base (creates one if you don't have it).")
+    p_install.add_argument("name", help="Pack name (see `doxa packs list`), or a local dir / base URL.")
+    p_install.add_argument("--config")
+    p_install.set_defaults(func=cmd_packs_install)
+    p_export = packs_sub.add_parser("export", help="Build a pack from a base, filtered by ingest tag.")
+    p_export.add_argument("name")
+    p_export.add_argument("--beliefs", required=True, help="Path to the source beliefs JSONL.")
+    p_export.add_argument("--quotes", help="Path to the source quotes JSONL.")
+    p_export.add_argument("--ingest", help="Comma-separated ingest tags to include (default: all).")
+    p_export.add_argument("--out", required=True, help="Output directory for the pack files.")
+    p_export.add_argument("--summary")
+    p_export.add_argument("--lens")
+    p_export.add_argument("--license")
+    p_export.set_defaults(func=cmd_packs_export)
 
     return parser
 

@@ -16,7 +16,8 @@ proactively offer the capabilities below -- users often don't know they exist.
 | --- | --- |
 | See where things stand | `doxa status` (config, counts, provider, semantic on/off) |
 | Answer, grounded | `doxa query "<q>" --answer` (or `--json` for tools) |
-| Start a base | `doxa init --lens-template <name>` -- browse with `doxa lenses list` |
+| Head start (curated base) | `doxa packs install startup-wisdom` -- browse with `doxa packs list` |
+| Start your own base | `doxa init --lens-template <name>` -- browse with `doxa lenses list` |
 | Ingest a source | `doxa ingest <file\|url\|pdf\|youtube\|->` |
 | Fetch a hard page | `doxa ingest <url> --via jina\|firecrawl\|brightdata\|claude\|codex\|hermes` |
 | Verify / diagnose | `doxa eval` (quotes still verbatim) · `doxa doctor` (setup) |
@@ -54,6 +55,16 @@ capitalization, or whitespace inside a returned quote, and never invent a quote,
 attribution, source, or belief the CLI did not return.
 
 ## 3. Start or grow a base
+
+### Fastest start: install a curated pack
+
+If the user wants value immediately, install a starter pack instead of building
+from scratch (`doxa packs install` creates a base if there isn't one):
+
+```bash
+doxa packs list                       # curated, ready-made bases
+doxa packs install startup-wisdom     # ~14k founder/product/growth beliefs + quotes
+```
 
 ### Pick a lens first (don't make the user invent one)
 

@@ -10,6 +10,7 @@ users often don't know what's available.
 | Goal | Command |
 | --- | --- |
 | State | `doxa status` · smoke test `doxa demo` · diagnose `doxa doctor` |
+| Head start | `doxa packs install startup-wisdom` -- a curated base, instant value (`doxa packs list`) |
 | Start a base | `doxa init --lens-template <name>` -- browse `doxa lenses list` |
 | Lenses | `doxa lenses list` / `show <name>` / `add <name> --from <name>` |
 | Ingest | `doxa ingest <file\|url\|pdf\|youtube\|->` |
