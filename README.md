@@ -1,4 +1,20 @@
-![Doxa belief oracle banner](assets/banner.svg)
+```text
+╔══════════════════════════════════════════════════════════════════════════════════════╗
+║██████╗  ██████╗ ██╗  ██╗ █████╗        DOXA // BELIEF ORACLE                         ║
+║██╔══██╗██╔═══██╗╚██╗██╔╝██╔══██╗       quote-first knowledge for agents              ║
+║██║  ██║██║   ██║ ╚███╔╝ ███████║       lens: custom  store: jsonl                    ║
+║██║  ██║██║   ██║ ██╔██╗ ██╔══██║       search: keyword / semantic / hybrid           ║
+║██████╔╝╚██████╔╝██╔╝ ██╗██║  ██║       verdict: NO QUOTE // NO CLAIM                 ║
+║╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝       unsourced prophecy stays dark                 ║
+║                                                                                      ║
+║           ⢀⣠⣤⣤⣀          .    .:*        +       .                                   ║
+║         ⣠⣾⣿⠟⠛⠻⣿⣷⣄        evidence rises like signal                                  ║
+║        ⢰⣿⣿⡏  ◉  ◉  ⢹⣿⣿⡆      belief == claim + receipts                              ║
+║        ⠘⣿⣿⣇   ▵    ⣸⣿⣿⠃      every answer carries a quote                            ║
+║         ⠈⠻⣿⣷⣤⣴⣿⠟⠁        .       *      .:*     +                                    ║
+║            ⠉⠛⠛⠉          DOXA keeps the oracle honest                                ║
+╚══════════════════════════════════════════════════════════════════════════════════════╝
+```
 
 # doxa
 
