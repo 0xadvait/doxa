@@ -31,7 +31,7 @@ from .retrieve import search
 from .resources import demo_config_path, skill_text
 from .schema import DoxaError, RetrievalResult
 from .sources import load_source
-from .sources.fetchers import available_fetchers
+from .sources.fetchers import INGEST_MODES, available_fetchers, build_fetch_prompt
 from .store import JsonlStore, index_postgres
 
 
@@ -318,6 +318,12 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     source_args = args.source if isinstance(args.source, list) else [args.source]
     stdin_text = sys.stdin.read() if "-" in source_args else None
 
+    fetch_prompt = build_fetch_prompt(getattr(args, "mode", None), getattr(args, "prompt", None))
+    if fetch_prompt:
+        effective_fetcher = args.via or (config.get("sources", {}).get("fetcher") or "requests")
+        if effective_fetcher not in {"claude", "codex", "hermes", "command"}:
+            _hint(f"note: --prompt/--mode only affect agent/command fetchers; '{effective_fetcher}' ignores them (try `--via hermes`).")
+
     total_b = total_q = ingested = skipped = 0
     for src in source_args:
         source = load_source(
@@ -328,6 +334,7 @@ def cmd_ingest(args: argparse.Namespace) -> int:
             title=args.title or "",
             author=args.author or "",
             url=args.url or "",
+            fetch_prompt=fetch_prompt,
         )
         if not source.text.strip():
             _hint(f"skipped {source.title}: no extractable text (scanned PDF needs OCR; empty file has nothing to mine).")
@@ -663,6 +670,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--via",
         choices=available_fetchers(),
         help="Override the URL fetcher (requests, jina, firecrawl, brightdata, command, or a browsing agent: claude/codex/hermes).",
+    )
+    ingest.add_argument(
+        "--mode",
+        choices=INGEST_MODES,
+        help="How an agent/command fetcher scrapes: markdown (default), browser (render JS), or extract (with --prompt).",
+    )
+    ingest.add_argument(
+        "--prompt",
+        help="Fetch/extract instruction for agent (claude/codex/hermes) or command fetchers, e.g. 'extract product name, price, reviews as JSON'.",
     )
     ingest.set_defaults(func=cmd_ingest)
 

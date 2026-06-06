@@ -133,6 +133,15 @@ The URL fetcher is pluggable (`--via`, or `sources.fetcher` default):
 or a browsing agent -- `claude` / `codex` / `hermes` -- which fetches the page with
 its own web tools and returns markdown (needs that CLI on PATH).
 
+Choose how the agent scrapes with `--mode` (markdown / browser / extract) and a
+free-form `--prompt`. The agent can use any of its tools (SERP, browser
+automation, structured extraction, platform endpoints) to satisfy the prompt:
+
+```bash
+doxa ingest <url> --via hermes --mode browser
+doxa ingest <url> --via hermes --mode extract --prompt "title, author, date as JSON"
+```
+
 ```bash
 doxa ingest https://target.example --via jina        # free, good first try for bot-walled pages
 doxa ingest https://target.example --via brightdata  # needs BrightData env vars

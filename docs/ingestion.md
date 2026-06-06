@@ -27,6 +27,19 @@ doxa is not tied to one scraper. The URL fetcher is chosen per ingest with
 - `claude` / `codex` / `hermes` -- delegate the fetch to a coding agent's browsing
   (returns markdown; needs that CLI on PATH; invocation overridable under `sources.<agent>`).
 
+Choose how an agent (or `command`) fetcher scrapes with `--mode` and `--prompt`:
+
+```bash
+doxa ingest <url> --via hermes                  # clean markdown (default)
+doxa ingest <url> --via hermes --mode browser   # render JS / scroll, then markdown
+doxa ingest <url> --via hermes --mode extract --prompt "name, price, rating as JSON"
+doxa ingest <url> --via claude --prompt "return only the methods section"
+```
+
+`--prompt` is free-form: the agent uses whatever it has (SERP search, browser
+automation, structured extraction, platform endpoints) to satisfy it. These flags
+are ignored by the fixed-format fetchers (`requests`/`jina`/`firecrawl`/`brightdata`).
+
 ```bash
 doxa ingest https://target.example --via jina
 doxa ingest https://target.example --via firecrawl
