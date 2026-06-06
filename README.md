@@ -74,6 +74,14 @@ Keyword search works with no API key, database, embedding model, or network.
 
 ---
 
+## Docs
+
+- [Configuration](docs/configuration.md) · [Providers](docs/providers.md) · [Ingestion](docs/ingestion.md)
+- [Retrieval](docs/retrieval.md) · [Writing a lens](docs/writing-a-lens.md) · [Architecture](docs/architecture.md)
+- [Agent skill](docs/skill.md) · [AGENTS.md](AGENTS.md) · [skill/SKILL.md](skill/SKILL.md)
+
+---
+
 ## Example questions & answers
 
 These examples are from the bundled public-domain demo and were generated with
@@ -391,6 +399,11 @@ data/quotes.jsonl
 data/sources.jsonl
 ```
 
+Re-ingesting the same source is skipped by default (doxa detects it); pass
+`--reingest` to replace it. See what you've ingested with `doxa sources list`,
+and undo a mistake with `doxa sources remove <id>`. Ingest several at once with
+shell globs: `doxa ingest notes/*.md`.
+
 ### Tough sources / BrightData
 
 For an MCP-equipped agent, the easiest path is to fetch the tough source with
@@ -658,10 +671,24 @@ mining in scripts or services.
 By default, next to `doxa.yaml` under `data/*.jsonl`. API providers receive the
 source chunks you ingest, so choose providers according to your data policy.
 
-**Can I inspect or edit the store directly?**
+**Can I inspect, update, or remove what I've ingested?**
 
-Yes. The store is line-delimited JSON. Keep quote strings verbatim if you edit
-records by hand, then run `doxa eval`.
+Yes. `doxa sources list` shows every ingested source with its belief/quote
+counts; `doxa sources remove <id>` deletes a source and its rows; re-ingesting
+replaces a source with `--reingest`. The store is also plain line-delimited JSON
+you can edit by hand -- keep quote strings verbatim, then run `doxa eval` (and
+`doxa index` if you use semantic search) to re-check and rebuild.
+
+---
+
+## Troubleshooting
+
+- **"Config not found"** -- run `doxa init` here, or point at one with `--config <path>`.
+- **"Set OPENAI_API_KEY / ..."** -- export the key, or switch to a no-key provider: `doxa init --provider codex-cli`.
+- **"needs the Codex/Claude CLI on PATH"** -- install that CLI, or pick another provider with `doxa init`.
+- **Semantic / `doxa index` errors** -- check `DOXA_POSTGRES_DSN` points at a running Postgres with pgvector enabled (`CREATE EXTENSION vector` as a superuser/owner). `doxa status` shows whether semantic is ready.
+- **Querying the wrong data?** -- with no `doxa.yaml` present, doxa uses the bundled demo base and says so on stderr. `doxa status` shows the active config and counts.
+- **See the full traceback** for a bug report: set `DOXA_DEBUG=1` before the command.
 
 ---
 

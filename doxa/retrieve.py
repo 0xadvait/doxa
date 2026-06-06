@@ -412,7 +412,10 @@ def search(
             )
             rankings = [keyword, semantic]
         except DoxaError as exc:
-            warnings.append(f"Semantic leg unavailable; hybrid fell back to keyword only: {exc}")
+            warnings.append(
+                f"Semantic leg unavailable; hybrid fell back to keyword only: {exc} "
+                "(run `doxa index` with DOXA_POSTGRES_DSN set to enable semantic/hybrid)."
+            )
             rankings = [keyword]
         fused = reciprocal_rank_fusion(
             rankings,

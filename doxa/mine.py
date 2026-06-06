@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 import json
 import re
 import uuid
@@ -80,15 +80,27 @@ def _stable_id(prefix: str, source_id: str, chunk_index: int, local_id: str) -> 
     return f"{prefix}_{uuid.uuid5(uuid.NAMESPACE_URL, raw).hex[:12]}"
 
 
-def mine_source(source: SourceRecord, config: dict[str, Any]) -> MiningResult:
-    """Mine a source with the configured provider and verify every quote."""
+def mine_source(
+    source: SourceRecord,
+    config: dict[str, Any],
+    *,
+    progress: Callable[[int, int], None] | None = None,
+) -> MiningResult:
+    """Mine a source with the configured provider and verify every quote.
+
+    ``progress``, if given, is called with (chunk_index, total_chunks) before each
+    chunk is mined so callers can show a live progress line during a long ingest.
+    """
 
     provider = get_provider(config)
     all_beliefs: list[Belief] = []
     all_quotes: list[Quote] = []
     dropped_quotes: list[dict[str, str]] = []
     source_meta = source.ref.to_dict()
-    for chunk_index, chunk in enumerate(chunk_text(source.text), start=1):
+    chunks = chunk_text(source.text)
+    for chunk_index, chunk in enumerate(chunks, start=1):
+        if progress is not None:
+            progress(chunk_index, len(chunks))
         system, user = build_extraction_prompt(config, source_meta, chunk)
         raw = parse_provider_json(provider.complete(system, user))
         local_beliefs = [Belief.from_dict({**item, "source": item.get("source") or source_meta}) for item in raw.get("beliefs", [])]
@@ -111,6 +123,23 @@ def mine_source(source: SourceRecord, config: dict[str, Any]) -> MiningResult:
         anchored_ids = {belief_id for quote in valid_quotes for belief_id in quote.belief_ids}
         all_beliefs.extend([belief for belief in local_beliefs if belief.id in anchored_ids])
         all_quotes.extend(valid_quotes)
+    # Overlapping chunks can restate the same belief; collapse cross-chunk duplicates
+    # (matched by normalized text) and repoint their quotes to the canonical belief id.
+    canonical: dict[str, str] = {}
+    remap: dict[str, str] = {}
+    deduped: list[Belief] = []
+    for belief in all_beliefs:
+        key = " ".join(belief.belief.lower().split())
+        if key in canonical:
+            remap[belief.id] = canonical[key]
+        else:
+            canonical[key] = belief.id
+            deduped.append(belief)
+    if remap:
+        for quote in all_quotes:
+            quote.belief_ids = [remap.get(bid, bid) for bid in quote.belief_ids]
+        all_beliefs = deduped
+
     dropped_beliefs = sorted({belief.id for belief in all_beliefs} - {bid for quote in all_quotes for bid in quote.belief_ids})
     return MiningResult(
         beliefs=[belief for belief in all_beliefs if belief.id not in dropped_beliefs],

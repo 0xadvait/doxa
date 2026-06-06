@@ -319,6 +319,9 @@ def chart(weights: dict[str, int]) -> str:
         lines.append(f"{slug:<16} [{bar}] {weight:>2}/{MAX_DOMAIN_WEIGHT}")
     if not weights:
         lines.append("(none configured)")
+    lines.append("")
+    lines.append('use on a query:  doxa query "..." --domain <slug>')
+    lines.append("set persistent:  doxa domains set <slug> <0-10>")
     return "\n".join(lines)
 
 
