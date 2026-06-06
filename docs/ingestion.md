@@ -61,8 +61,15 @@ your command (with `{url}` substituted) and ingests its stdout:
 sources:
   fetcher: command
   command:
-    argv: ["my-fetch", "{url}"]   # or shell: "my-fetch {url}"; prints text to stdout
+    argv: ["my-fetch", "{url}"]   # prints text to stdout; {prompt} also substituted
+    # shell: "my-fetch {url}"     # requires command.allow_shell: true
 ```
+
+Agent fetchers run safely by default (no approval bypass). For unattended runs on
+trusted sources, `doxa ingest ... --yolo` enables codex
+`--dangerously-bypass-approvals-and-sandbox`, hermes `--yolo`, and the command
+shell for that run (or set `sources.codex.unsafe_bypass` /
+`sources.hermes.unsafe_yolo` / `sources.command.allow_shell` in config).
 
 MCP-equipped agents can also skip fetchers and pipe pre-fetched markdown straight
 into `doxa ingest -`. Add a custom fetcher in Python with

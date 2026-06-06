@@ -253,455 +253,130 @@ python -m pip install -e ".[openai,anthropic]"
 
 ## Configure
 
-Create a config:
-
 ```bash
-doxa init
+doxa init            # interactive: provider, model, lens -> writes doxa.yaml
+doxa status          # config, data dir, belief/quote counts, provider, semantic
 ```
 
-`doxa init` walks you through:
-
-- mining provider: `codex-cli`, `claude-cli`, `openai`,
-  `openai-compatible` / Fireworks, or `anthropic`
-- model name, when the provider needs one
-- API key environment variable for API providers
-- `base_url` for OpenAI-compatible providers
-- lens name, description, and guiding question
-
-Directory paths are accepted:
-
-```bash
-doxa init .
-doxa init ./my-belief-base/
-doxa init ./configs/research.yaml
-```
-
-Non-interactive mode is script-friendly and also activates automatically when
-stdin is not a TTY:
-
-```bash
-doxa init ./doxa.yaml --yes --provider codex-cli
-
-doxa init ./fireworks.yaml \
-  --yes \
-  --provider openai-compatible \
-  --model accounts/fireworks/models/kimi-k2p6 \
-  --lens "Extract durable claims about judgment, agency, and action."
-```
-
-Use `--force` to overwrite an existing config.
-
-Domain preferences are optional and live in config as small 0-10 weights:
-
-```bash
-doxa domains
-doxa domains set technical 8
-doxa domains add finance 6
-doxa domains export
-```
-
-Domains are represented as ordinary `domain:<slug>` tags on beliefs and quotes,
-so old JSONL stores keep working. Retrieval also matches legacy plain tags through
-`preferences.domain_aliases`; for example, `--domain crypto` can boost records
-tagged `token-economics`, and `--domain relationships` can boost records tagged
-`trust`. Keyword search also uses active aliases as a low-weight candidate
-discovery leg after the literal query has matched at least one document; set
-`retrieval.domain_query_boost: 0` or pass `--no-domain-boost` for literal
-keyword-only candidates.
+`doxa init` is also scriptable (`--yes --provider ... --model ... --lens "..."`),
+and domain weights tune retrieval (`doxa domains set technical 8`). Full options:
+[docs/configuration.md](docs/configuration.md).
 
 ---
 
 ## Providers
 
-| Provider | Key? | Install | Default auth/config | Best for |
-| --- | --- | --- | --- | --- |
-| `codex-cli` | No | core | existing Codex CLI auth via `codex exec` | local interactive setup |
-| `claude-cli` | No | core | existing Claude Code auth via `claude -p` | local interactive setup |
-| `openai` | Yes | `doxa[openai]` | `OPENAI_API_KEY`, `gpt-4.1-mini` | API mining |
-| `openai-compatible` / `fireworks` | Usually | `doxa[openai]` | `FIREWORKS_API_KEY` for Fireworks examples | custom/open-weight models |
-| `anthropic` | Yes | `doxa[anthropic]` | `ANTHROPIC_API_KEY`, `claude-3-5-sonnet-latest` | API mining |
+| Provider | Key? | Best for |
+| --- | --- | --- |
+| `codex-cli` / `claude-cli` | No (reuses your CLI login) | local interactive setup |
+| `openai` | `OPENAI_API_KEY` | API mining |
+| `openai-compatible` / `fireworks` | usually a key | custom / open-weight models |
+| `anthropic` | `ANTHROPIC_API_KEY` | API mining |
 
-API providers need their key in the configured environment variable:
-
-```bash
-export OPENAI_API_KEY=...
-export FIREWORKS_API_KEY=...
-export ANTHROPIC_API_KEY=...
-```
-
-Fireworks example:
-
-```yaml
-llm:
-  provider: openai-compatible
-  model: accounts/fireworks/models/kimi-k2p6
-  temperature: 0
-
-providers:
-  openai-compatible:
-    base_url: https://api.fireworks.ai/inference/v1
-    api_key_env: FIREWORKS_API_KEY
-    model: accounts/fireworks/models/kimi-k2p6
-```
-
-Then:
-
-```bash
-export FIREWORKS_API_KEY=...
-doxa ingest ./sources/essay.txt
-```
-
-CLI providers do not need API key variables, but they do require the relevant
-binary on `PATH`:
-
-```bash
-command -v codex
-command -v claude
-```
+Setup + the Fireworks example: [docs/providers.md](docs/providers.md).
 
 ---
 
 ## Ingest sources
 
-All ingestion uses the configured lens and provider:
-
 ```bash
-doxa ingest ./notes.txt
-doxa ingest ./essay.md
-doxa ingest ./paper.pdf
-doxa ingest https://example.com/longform-article
-doxa ingest "https://www.youtube.com/watch?v=VIDEO_ID"
-printf 'Trust thyself: every heart vibrates to that iron string.' | \
-  doxa ingest - --title "Self-Reliance excerpt" --author "Ralph Waldo Emerson"
+doxa ingest ./essay.md ./paper.pdf            # files (shell globs work)
+doxa ingest https://example.com/article       # URL
+doxa ingest "https://youtube.com/watch?v=..." # video (yt-dlp transcript)
+pbpaste | doxa ingest - --title "Notes"       # stdin
 ```
 
-Use another config:
+| Source | Requirement |
+| --- | --- |
+| text / stdin / URL | core |
+| PDF | `doxa[pdf]` |
+| YouTube | `doxa[youtube]` |
 
-```bash
-doxa ingest ./sources/plato.txt --config ./configs/philosophy.yaml
-```
-
-Source support:
-
-| Source | Requirement | Loader behavior |
-| --- | --- | --- |
-| stdin (`-`) | core | Reads piped UTF-8 text; use `--title`, `--author`, and `--url` for metadata. |
-| `.txt`, `.md`, `.text` | core | Reads local UTF-8 text. |
-| URL | core | Fetches HTML/text with the configured URL fetcher. |
-| PDF | `doxa[pdf]` | Extracts page text with PyMuPDF. |
-| YouTube | `doxa[youtube]` | Downloads English subtitles or auto-captions with yt-dlp. |
-
-Ingest writes:
-
-```text
-data/beliefs.jsonl
-data/quotes.jsonl
-data/sources.jsonl
-```
-
-Re-ingesting the same source is skipped by default (doxa detects it); pass
-`--reingest` to replace it. See what you've ingested with `doxa sources list`,
-and undo a mistake with `doxa sources remove <id>`. Ingest several at once with
-shell globs: `doxa ingest notes/*.md`.
+Quotes that aren't verbatim in the source are dropped. Re-ingest is skipped by
+default (`--reingest` to replace); `doxa sources list` / `doxa sources remove <id>`
+manage the base. Full guide: [docs/ingestion.md](docs/ingestion.md).
 
 ### Web fetchers (pluggable)
 
-doxa is not tied to one scraping method. The URL fetcher is pluggable: choose one
-per ingest with `--via`, or set `sources.fetcher` as the default.
+Not tied to one scraper -- pick per ingest with `--via`, or set `sources.fetcher`:
 
 | Fetcher | Key? | What it does |
 | --- | --- | --- |
-| `requests` | No | Plain HTTP + stdlib HTML extraction (default). |
-| `jina` | Optional | [Jina Reader](https://jina.ai/reader/) -- clean markdown, free; set `JINA_API_KEY` for higher limits. |
-| `firecrawl` | Yes | [Firecrawl](https://firecrawl.dev) scrape API; needs `FIRECRAWL_API_KEY`. |
-| `brightdata` | Yes | BrightData Web Unlocker; needs `BRIGHTDATA_API_TOKEN` + `BRIGHTDATA_ZONE`. |
-| `command` | -- | Run ANY tool or MCP bridge that prints text to stdout. |
-| `claude` / `codex` / `hermes` | -- | Let a coding agent browse and return clean markdown -- good for JS-heavy or bot-walled pages. |
+| `requests` | No | plain HTTP + HTML extraction (default) |
+| `jina` | optional | clean markdown, free |
+| `firecrawl` | `FIRECRAWL_API_KEY` | scrape API |
+| `brightdata` | tokens | Web Unlocker |
+| `command` | -- | run ANY tool / MCP bridge |
+| `claude` / `codex` / `hermes` | -- | a coding agent browses for you |
 
 ```bash
-doxa ingest https://target.example --via jina          # free, clean markdown
-doxa ingest https://target.example --via firecrawl     # FIRECRAWL_API_KEY
-doxa ingest https://target.example --via brightdata    # BRIGHTDATA_API_TOKEN + _ZONE
-doxa ingest https://target.example --via claude        # an agent browses for you (or codex / hermes)
+doxa ingest <url> --via jina                          # free, clean markdown
+doxa ingest <url> --via hermes --mode browser         # render JS, then markdown
+doxa ingest <url> --via codex --mode extract --prompt "name, price as JSON"
 ```
 
-Set a default and per-fetcher options in `doxa.yaml`:
-
-```yaml
-sources:
-  fetcher: jina            # default URL fetcher
-  jina: { api_key_env: JINA_API_KEY }
-  firecrawl: { api_key_env: FIRECRAWL_API_KEY }
-  brightdata: { api_token_env: BRIGHTDATA_API_TOKEN, zone_env: BRIGHTDATA_ZONE }
-```
-
-**Wire any scraper or MCP** with the `command` fetcher: it runs your command
-(`{url}` is substituted) and ingests its stdout -- e.g. bridge a harness's
-BrightData MCP through a small script:
-
-```yaml
-sources:
-  fetcher: command
-  command:
-    argv: ["my-fetch", "{url}"]   # your script prints markdown/text to stdout
-```
-
-**Let a coding agent do the scraping.** `claude`, `codex`, and `hermes` delegate
-the fetch to that CLI's browsing and ingest the markdown it returns -- handy for
-pages plain HTTP can't read. Each needs its CLI on PATH and web access; the
-invocation, prompt, and timeout are overridable under `sources.<agent>`:
-
-```bash
-doxa ingest https://target.example --via claude   # or --via codex / --via hermes
-```
-
-```yaml
-sources:
-  fetcher: codex
-  codex: { timeout: 300 }        # argv/prompt also overridable, e.g. sources.codex.argv
-```
-
-Agents run **safely by default** (no approval-bypass). For unattended runs on
-sources you trust, **`--yolo`** flips on the danger opt-ins for that ingest --
-codex `--dangerously-bypass-approvals-and-sandbox`, hermes `--yolo`, and the
-`command` shell (equivalent to setting `sources.codex.unsafe_bypass` /
-`sources.hermes.unsafe_yolo` / `sources.command.allow_shell`):
-
-```bash
-doxa ingest https://target.example --via codex --yolo
-```
-
-**Choose how to scrape** with `--mode` / `--prompt` (agent + `command` fetchers).
-`--prompt` is free-form, so the agent can use whatever it has -- SERP search,
-browser automation, structured extraction, platform-specific endpoints -- to
-satisfy it:
-
-```bash
-doxa ingest <url> --via hermes                                  # clean markdown (default)
-doxa ingest <url> --via hermes --mode browser                  # render JS, scroll, then markdown
-doxa ingest <url> --via hermes --mode extract --prompt "name, price, rating as JSON"
-doxa ingest <url> --via claude --prompt "return only the methods section"
-```
-
-**MCP-equipped agents** can also skip fetchers and pipe pre-fetched markdown in:
-
-```bash
-printf '%s' "$FETCHED_MARKDOWN" | doxa ingest - --title "Title" --url "https://target.example"
-```
-
-Custom fetchers can be added in Python with
-`doxa.sources.fetchers.register_fetcher(name, fn)`.
+Agent fetchers run safely by default; add `--yolo` for unattended bypass on
+trusted sources. The `command` fetcher and `register_fetcher()` wire anything
+else. Full details: [docs/ingestion.md](docs/ingestion.md).
 
 ---
 
 ## Query
 
-Keyword search is the default and has no infrastructure dependency:
-
 ```bash
-doxa query "faction and liberty" --search keyword --limit 5
-doxa query "faction and liberty" --search keyword --top 5
+doxa query "faction and liberty"            # keyword (default, zero setup)
+doxa query "examined life" --answer         # readable evidence brief
+doxa query "examined life" --json           # machine output
+doxa query "..." --top 10 --domain policy   # more results, topic-biased
 ```
 
-Keyword retrieval searches both belief documents and quote documents. A phrase
-that appears only in a quote can retrieve the linked belief, and the matched
-quote is displayed before other linked quotes.
-
-Domain-focused queries:
-
-```bash
-doxa query "incident response tradeoffs" --domain technical
-doxa query "market structure and incentives" --domains finance,policy
-doxa query "plain keyword behavior" --no-domain-boost
-```
-
-Use JSON output for downstream tools:
-
-```bash
-doxa query "examined life" --json
-```
-
-Use `--answer` when you want a terminal-facing answer instead of raw retrieval
-records:
-
-```bash
-doxa query "examined life" --search keyword --answer
-```
-
-`--answer` is local and deterministic. It smooths only the non-quote prose,
-omits retrieved beliefs that have no returned quote, and prints stored quote
-strings exactly as returned. The default plain retrieval output remains the raw
-record view, and `--json` output is unchanged for downstream tools.
-
-Only quote what doxa returns. If retrieval returns too little evidence, ingest
-more trusted sources rather than filling the gap yourself.
+Keyword search covers belief and quote text (a phrase only in a quote still finds
+its belief). Only quote what doxa returns. Full reference + semantic/hybrid setup:
+[docs/retrieval.md](docs/retrieval.md).
 
 ---
 
-## Semantic search
-
-Semantic and hybrid retrieval use `fastembed` plus Postgres with pgvector.
-
-Install extras:
+## Semantic search (optional)
 
 ```bash
 python -m pip install -e ".[embeddings,postgres]"
-```
-
-Prepare Postgres, enable pgvector, and set the DSN:
-
-```bash
-export DOXA_POSTGRES_DSN=postgresql://user:password@localhost:5432/doxa
-psql "$DOXA_POSTGRES_DSN" -c "CREATE EXTENSION IF NOT EXISTS vector;"
-```
-
-Build the index from JSONL:
-
-```bash
+export DOXA_POSTGRES_DSN=postgresql://...     # then enable pgvector: CREATE EXTENSION vector
 doxa index
+doxa query "political conflict" --search hybrid
 ```
 
-Query:
-
-```bash
-doxa query "political conflict as a permanent condition" --search semantic
-doxa query "political conflict as a permanent condition" --search hybrid
-```
-
-`hybrid` fuses keyword and semantic rankings. If semantic search is unavailable,
-hybrid reports a warning and falls back to keyword results.
+Hybrid fuses keyword + semantic and falls back to keyword if the index is
+unavailable. Details: [docs/retrieval.md](docs/retrieval.md).
 
 ---
 
 ## Faithfulness eval
 
-Run the built-in integrity check:
-
 ```bash
-doxa eval
+doxa eval      # every quote still verbatim, every belief still linked (exit !=0 on failure)
+doxa doctor    # config, storage, provider, and semantic-index readiness
 ```
-
-Example:
-
-```text
-Beliefs: 8
-Quotes: 8
-Sources: 3
-Checked quotes: 8
-Quote verbatim: 100.00%
-Bad links: 0
-Orphan beliefs: 0
-OK: True
-```
-
-The eval checks:
-
-- every quote is still verbatim in stored source text
-- every quote links to an existing belief
-- every belief has at least one linked quote
 
 ---
 
-## Install as an agent skill
+## Use it as an agent skill
 
-`doxa` ships a portable skill file for agent harnesses. The skill tells the
-agent to call the `doxa` CLI and treat linked quotes as ground truth. It turns
-JSONL-backed corpora into custom knowledge bases for Claude Code, Codex, Hermes,
-OpenCLAW, and similar tools.
-
-Install the `doxa` CLI first. From a local checkout:
+doxa ships a portable skill so an agent calls the CLI and treats quotes as ground
+truth:
 
 ```bash
-python -m pip install -e ".[all]"
+doxa skill install --harness claude-code   # or codex / hermes / openclaw / generic
 ```
 
-```bash
-doxa skill install --harness claude-code
-doxa skill install --harness codex
-doxa skill install --harness hermes
-doxa skill install --harness openclaw
-doxa skill install --harness generic --dest ./skills/doxa
-```
-
-Use `--scope project` for harnesses that support project-local skill folders:
-
-```bash
-doxa skill install --harness codex --scope project
-```
-
-Skill install overwrites the target `SKILL.md`.
-
-The skill contract is deliberately strict: No quote, no claim.
+Details: [docs/skill.md](docs/skill.md) and [AGENTS.md](AGENTS.md).
 
 ---
 
-## Writing a lens
+## Lens & schema
 
-A lens is the question doxa asks while reading. Keep it narrower than
-"everything interesting."
-
-Full lens:
-
-```yaml
-lens:
-  name: decision-theory
-  description: Extract claims about judgment, uncertainty, incentives, and action.
-  question: What does this source believe about making decisions under uncertainty?
-  stances:
-    - supports
-    - questions
-    - rejects
-    - complicates
-  tags:
-    - uncertainty
-    - incentives
-    - judgment
-```
-
-String shorthand is also accepted:
-
-```yaml
-lens: Extract claims about courage, duty, risk, and practical judgment.
-```
-
-String lenses use sensible defaults for name, guiding question, stances, and
-tags, and are safe for ingest and prompt construction.
-
----
-
-## Schema reference
-
-`Belief`:
-
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `id` | string | Stable belief identifier. |
-| `belief` | string | Concise claim or stance. |
-| `reasoning` | string | Why the linked quote supports the belief. |
-| `stance` | string | Usually `supports`, `questions`, `rejects`, or `complicates`. |
-| `conviction` | number | 0 to 1 score based only on quote support. |
-| `tags` | list[string] | Optional retrieval/filtering tags. |
-| `source` | object | `title`, `author`, `date`, `url`. |
-
-`Quote`:
-
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `id` | string | Stable quote identifier. |
-| `quote` | string | Exact source substring. |
-| `speaker` | string | Speaker or author label when available. |
-| `source` | object | `title`, `author`, `date`, `url`. |
-| `context` | string | Short surrounding context. |
-| `tags` | list[string] | Optional quote tags. |
-| `belief_ids` | list[string] | Linked belief identifiers. |
-
-Stored source records keep the full text so quote faithfulness can be checked
-again later.
-
-Domain preferences use normal tags such as `domain:technical`, plus optional
-plain-tag aliases under `preferences.domain_aliases`; no schema migration is
-required. Keyword search can use active aliases for low-weight candidate
-discovery before final ranking.
+A **lens** is the question doxa asks while reading (narrow beats broad) --
+[docs/writing-a-lens.md](docs/writing-a-lens.md). Beliefs and quotes are plain
+JSONL; field reference in [docs/schema.md](docs/schema.md).
 
 ---
 
