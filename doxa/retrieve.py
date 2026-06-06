@@ -10,8 +10,9 @@ import re
 from typing import Any
 
 from .domains import active_domain_weights, domain_aliases, domain_multiplier_for_result
-from .embed import embed_texts
+from .embed import embed_query, embed_texts
 from .schema import Belief, DoxaError, Quote, RetrievalResult
+from .stem import STOPWORDS, stem as _stem
 from .store import JsonlStore, postgres_connect
 
 
@@ -26,8 +27,20 @@ class _SearchDoc:
     quote: Quote | None = None
 
 
-def tokenize(text: str) -> list[str]:
-    return [token.lower() for token in TOKEN_RE.findall(text)]
+def tokenize(text: str, *, stem: bool = True) -> list[str]:
+    """Lowercase tokens; optionally drop stopwords and Porter-stem.
+
+    Stemming is symmetric (same for documents and queries), so variants like
+    ``factions``/``faction`` match. Stored data is never touched -- this only
+    shapes the in-memory BM25 index and the query.
+    """
+    tokens = [token.lower() for token in TOKEN_RE.findall(text)]
+    if not stem:
+        return tokens
+    filtered = [t for t in tokens if t not in STOPWORDS]
+    if not filtered:  # a query made only of stopwords -> keep the raw tokens
+        filtered = tokens
+    return [_stem(t) for t in filtered]
 
 
 def belief_document_text(belief: Belief) -> str:
@@ -146,7 +159,7 @@ def _rank_results(
     return [result for _, result in boosted[:limit]]
 
 
-def _domain_query_terms(config: dict[str, Any], domains: list[str] | None, *, enabled: bool) -> list[str]:
+def _domain_query_terms(config: dict[str, Any], domains: list[str] | None, *, enabled: bool, stem: bool = True) -> list[str]:
     active_weights = active_domain_weights(config, domains, enabled=enabled)
     if not active_weights:
         return []
@@ -155,7 +168,7 @@ def _domain_query_terms(config: dict[str, Any], domains: list[str] | None, *, en
     seen: set[str] = set()
     for slug in active_weights:
         for value in aliases.get(slug, [slug]):
-            for term in tokenize(value):
+            for term in tokenize(value, stem=stem):
                 if term in seen:
                     continue
                 seen.add(term)
@@ -191,21 +204,32 @@ def keyword_search(
         docs.append(_SearchDoc(kind="belief", belief_id=belief.id, text=belief_document_text(belief)))
     for quote in quotes:
         docs.append(_SearchDoc(kind="quote", belief_id="", text=quote_document_text(quote), quote=quote))
-    query_terms = tokenize(query)
+    stem_tokens = bool(store.config.get("retrieval", {}).get("stem", True))
+    query_terms = tokenize(query, stem=stem_tokens)
     if not query_terms:
         return []
     candidate_limit = max(candidate_limit or limit, limit)
-    doc_terms = [tokenize(doc.text) for doc in docs]
+    doc_terms = [tokenize(doc.text, stem=stem_tokens) for doc in docs]
     literal_doc_scores = _bm25_scores(query_terms, doc_terms, k1=k1, b=b)
     if not literal_doc_scores:
         return []
     combined_doc_scores: Counter[int] = Counter()
     for doc_index, raw_score in literal_doc_scores:
         combined_doc_scores[doc_index] += raw_score
+    # Precision: reward docs that contain the exact contiguous query phrase, so a
+    # multi-word query ranks true phrase matches above scattered-term matches.
+    # Matched on raw (unstemmed) text so stemming can't blur the phrase.
+    phrase_boost = max(float(store.config.get("retrieval", {}).get("phrase_boost", 0.5)), 0.0)
+    if phrase_boost > 0 and len(query_terms) >= 2:
+        phrase = " ".join(tokenize(query, stem=False))
+        if phrase:
+            for doc_index, raw_score in literal_doc_scores:
+                if phrase in " ".join(tokenize(docs[doc_index].text, stem=False)):
+                    combined_doc_scores[doc_index] += raw_score * phrase_boost
     domain_query_boost = max(float(store.config.get("retrieval", {}).get("domain_query_boost", 0.25)), 0.0)
     if domain_boost and domain_query_boost > 0:
         for doc_index, raw_score in _bm25_scores(
-            _domain_query_terms(store.config, domains, enabled=True),
+            _domain_query_terms(store.config, domains, enabled=True, stem=stem_tokens),
             doc_terms,
             k1=k1,
             b=b,
@@ -269,7 +293,7 @@ def semantic_search(
     """Search a pgvector index with cosine distance."""
 
     candidate_limit = max(candidate_limit or limit, limit)
-    vector = embed_texts([query], config)[0]
+    vector = embed_query(query, config)
     prefix = str(config.get("postgres", {}).get("table_prefix", "doxa"))
     conn = postgres_connect(config)
     try:
