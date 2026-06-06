@@ -1,107 +1,73 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
-  <title id="title">Doxa belief oracle banner</title>
-  <desc id="desc">A colored neo-industrial oracle banner for doxa with the branding NO QUOTE // NO CLAIM.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-labelledby="title desc">
+  <title id="title">doxa — no quote, no claim</title>
+  <desc id="desc">A clean GitHub README banner for doxa: custom knowledge bases for agents, grounded in verbatim quotes.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#05080a"/>
-      <stop offset="0.36" stop-color="#0d1718"/>
-      <stop offset="0.7" stop-color="#12100f"/>
-      <stop offset="1" stop-color="#050607"/>
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="0.58" stop-color="#111827"/>
+      <stop offset="1" stop-color="#090b10"/>
     </linearGradient>
-    <radialGradient id="oracleGlow" cx="50%" cy="47%" r="48%">
-      <stop offset="0" stop-color="#74fff1" stop-opacity="0.42"/>
-      <stop offset="0.34" stop-color="#ffb84d" stop-opacity="0.17"/>
-      <stop offset="1" stop-color="#0a0d0f" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="titleFill" x1="260" y1="0" x2="990" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#f8e7bf"/>
-      <stop offset="0.52" stop-color="#9ffcf1"/>
-      <stop offset="1" stop-color="#ff6d8f"/>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7dd3fc"/>
+      <stop offset="0.52" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#fb7185"/>
     </linearGradient>
-    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#1f2d30"/>
-      <stop offset="0.5" stop-color="#4a3830"/>
-      <stop offset="1" stop-color="#162427"/>
-    </linearGradient>
-    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-      <path d="M40 0H0V40" fill="none" stroke="#8ceee2" stroke-opacity="0.08" stroke-width="1"/>
-    </pattern>
-    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="7" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="18"/>
     </filter>
     <style>
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
       .sans { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-      .cream { fill: #f8e7bf; }
-      .cyan { fill: #80fff1; }
-      .pink { fill: #ff6d8f; }
-      .amber { fill: #ffbd5a; }
-      .muted { fill: #8ca4a5; }
-      .line-cyan { stroke: #80fff1; }
-      .line-amber { stroke: #ffbd5a; }
-      .line-pink { stroke: #ff6d8f; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+      .title { fill: #f8fafc; font-weight: 800; letter-spacing: -0.055em; }
+      .text { fill: #cbd5e1; }
+      .muted { fill: #94a3b8; }
+      .line { stroke: #334155; stroke-width: 1; }
+      .hairline { stroke: #64748b; stroke-opacity: .22; stroke-width: 1; }
     </style>
   </defs>
 
-  <rect width="1280" height="640" fill="url(#bg)"/>
-  <rect width="1280" height="640" fill="url(#grid)"/>
-  <rect x="160" y="54" width="960" height="520" fill="url(#oracleGlow)"/>
-  <path d="M76 54H1204L1240 90V550L1204 586H76L40 550V90Z" fill="none" stroke="#80fff1" stroke-opacity="0.34" stroke-width="2"/>
-  <path d="M100 82H1180L1208 110V530L1180 558H100L72 530V110Z" fill="none" stroke="#f8e7bf" stroke-opacity="0.18" stroke-width="1.5"/>
+  <rect width="1280" height="420" rx="28" fill="url(#bg)"/>
+  <circle cx="998" cy="82" r="210" fill="#7dd3fc" opacity="0.09" filter="url(#soft)"/>
+  <circle cx="392" cy="330" r="230" fill="#fb7185" opacity="0.07" filter="url(#soft)"/>
+  <path d="M64 64H1216" class="hairline"/>
+  <path d="M64 356H1216" class="hairline"/>
 
-  <g opacity="0.34">
-    <path d="M118 160H314M966 160H1162M118 480H314M966 480H1162" stroke="#ffbd5a" stroke-width="2"/>
-    <path d="M170 104V536M1110 104V536" stroke="#80fff1" stroke-width="1"/>
-    <circle cx="170" cy="132" r="5" fill="#ff6d8f"/>
-    <circle cx="170" cy="508" r="5" fill="#ff6d8f"/>
-    <circle cx="1110" cy="132" r="5" fill="#ff6d8f"/>
-    <circle cx="1110" cy="508" r="5" fill="#ff6d8f"/>
+  <g transform="translate(84 82)">
+    <text class="mono muted" x="0" y="0" font-size="15" letter-spacing="0.22em">CUSTOM KNOWLEDGE BASES FOR AGENTS</text>
+    <text class="sans title" x="0" y="94" font-size="104">doxa</text>
+    <rect x="8" y="118" width="384" height="4" rx="2" fill="url(#accent)"/>
+    <text class="sans text" x="0" y="166" font-size="30">Turn trusted sources into queryable beliefs.</text>
+    <text class="sans muted" x="0" y="207" font-size="23">Every answer is pinned to a verbatim quote.</text>
+
+    <g transform="translate(0 244)">
+      <rect x="0" y="0" width="304" height="44" rx="22" fill="#111827" stroke="#334155"/>
+      <circle cx="24" cy="22" r="5" fill="#7dd3fc"/>
+      <text class="mono text" x="44" y="28" font-size="15">keyword · semantic · hybrid</text>
+    </g>
+    <g transform="translate(324 244)">
+      <rect x="0" y="0" width="236" height="44" rx="22" fill="#111827" stroke="#334155"/>
+      <circle cx="24" cy="22" r="5" fill="#fb7185"/>
+      <text class="mono text" x="44" y="28" font-size="15">local JSONL store</text>
+    </g>
   </g>
 
-  <g class="mono" font-size="17" letter-spacing="2">
-    <text x="94" y="124" class="cyan">SOURCE: VERBATIM</text>
-    <text x="94" y="154" class="muted">belief == claim + receipts</text>
-    <text x="94" y="184" class="amber">store: jsonl</text>
-    <text x="94" y="214" class="muted">lens: custom</text>
-    <text x="958" y="124" class="pink">SEARCH: HYBRID</text>
-    <text x="958" y="154" class="muted">keyword / semantic</text>
-    <text x="958" y="184" class="amber">quote hit folds back</text>
-    <text x="958" y="214" class="muted">answer carries source</text>
+  <g transform="translate(720 96)">
+    <rect x="0" y="0" width="472" height="228" rx="16" fill="#0b1220" stroke="#334155"/>
+    <rect x="0" y="0" width="472" height="38" rx="16" fill="#111827"/>
+    <circle cx="24" cy="19" r="5" fill="#fb7185"/>
+    <circle cx="44" cy="19" r="5" fill="#fbbf24"/>
+    <circle cx="64" cy="19" r="5" fill="#34d399"/>
+    <text class="mono muted" x="92" y="24" font-size="13">doxa query</text>
+
+    <text class="mono" x="28" y="75" font-size="18" fill="#7dd3fc">$ doxa query "what should I trust?"</text>
+    <text class="mono text" x="28" y="112" font-size="16">belief: self-trust requires evidence</text>
+    <text class="mono muted" x="28" y="144" font-size="16">source: essay / transcript / note</text>
+    <text class="mono" x="28" y="176" font-size="16" fill="#fbbf24">quote: "...exact words from the source..."</text>
+    <path d="M28 204H444" class="line"/>
   </g>
 
-  <g transform="translate(640 318)" filter="url(#softGlow)">
-    <path d="M0 -176L154 -88V88L0 176L-154 88V-88Z" fill="#101719" stroke="#80fff1" stroke-opacity="0.7" stroke-width="3"/>
-    <path d="M0 -136L118 -68V68L0 136L-118 68V-68Z" fill="#080b0d" stroke="#ffbd5a" stroke-opacity="0.58" stroke-width="2"/>
-    <path d="M-178 0H-118M118 0H178M0 -208V-136M0 136V208" stroke="#ff6d8f" stroke-opacity="0.64" stroke-width="3"/>
-    <circle cx="0" cy="0" r="82" fill="#0c1113" stroke="#f8e7bf" stroke-opacity="0.58" stroke-width="3"/>
-    <path d="M-92 0C-50 -52 50 -52 92 0C50 52 -50 52 -92 0Z" fill="#102426" stroke="#80fff1" stroke-width="3"/>
-    <circle cx="0" cy="0" r="27" fill="#ffbd5a"/>
-    <circle cx="0" cy="0" r="12" fill="#080b0d"/>
-    <path d="M0 -28L16 14H-16Z" fill="#ff6d8f" opacity="0.85"/>
-  </g>
-
-  <text x="640" y="292" text-anchor="middle" class="sans" font-size="146" font-weight="900" letter-spacing="16" fill="url(#titleFill)">DOXA</text>
-  <text x="640" y="337" text-anchor="middle" class="mono cream" font-size="23" letter-spacing="7">BELIEF ORACLE</text>
-  <text x="640" y="374" text-anchor="middle" class="mono muted" font-size="18">quote-first knowledge for agents</text>
-
-  <g>
-    <path d="M303 420H977L1000 444L977 492H303L280 444Z" fill="#080b0d" stroke="#ffbd5a" stroke-opacity="0.78" stroke-width="2"/>
-    <path d="M320 432H960" stroke="#80fff1" stroke-opacity="0.34" stroke-width="1"/>
-    <text x="640" y="470" text-anchor="middle" class="mono pink" font-size="41" font-weight="800" letter-spacing="4">NO QUOTE // NO CLAIM</text>
-  </g>
-
-  <g class="mono" font-size="14" letter-spacing="1">
-    <text x="365" y="520" class="amber">unsourced prophecy stays dark</text>
-    <text x="640" y="520" text-anchor="middle" class="muted">evidence rises like signal</text>
-    <text x="915" y="520" text-anchor="end" class="cyan">DOXA keeps the oracle honest</text>
-  </g>
-
-  <g class="mono" font-size="13" opacity="0.78">
-    <text x="90" y="566" class="muted">╭──────── oracle membrane ────────╮</text>
-    <text x="982" y="566" class="muted">╰────── evidence or silence ─────╯</text>
+  <g transform="translate(720 344)">
+    <rect x="0" y="-33" width="472" height="52" rx="26" fill="#0f172a" stroke="url(#accent)" stroke-width="1.5"/>
+    <text class="mono" x="236" y="0" text-anchor="middle" font-size="18" font-weight="700" fill="#f8fafc" letter-spacing="0.16em">NO QUOTE // NO CLAIM</text>
   </g>
 </svg>
