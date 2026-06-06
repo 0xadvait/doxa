@@ -1,4 +1,12 @@
-"""Terminal banner rendering."""
+"""Terminal banner rendering.
+
+The bundled banner (``doxa/_assets/banner.txt``) is a side-by-side lockup: a
+braille oracle orb on the left and the half-block DOXA wordmark on the right,
+inside a dashed frame. Coloring is done per character *class* so the orb and the
+wordmark can take different colors even when they share a line. Colorizing only
+wraps runs in ANSI escapes -- it never changes the underlying characters, so
+stripping the escapes always yields the original banner text.
+"""
 
 from __future__ import annotations
 
@@ -9,12 +17,13 @@ from .resources import banner_text
 
 
 RESET = "\033[0m"
-BORDER = "\033[38;5;45m"
-TITLE = "\033[1;38;5;220m"
-MUTED = "\033[38;5;245m"
-SIGNAL = "\033[38;5;81m"
-VERDICT = "\033[1;38;5;197m"
-ORACLE = "\033[38;5;141m"
+FRAME = "\033[38;5;240m"     # dim grey dashed border
+TITLE = "\033[1;38;5;231m"   # bright white DOXA wordmark
+ORACLE = "\033[38;5;81m"     # cyan wireframe orb
+MUTED = "\033[38;5;245m"     # anything else
+
+_BLOCKS = "█▀▄▌▐░▒▓▙▟▛▜▖▗▘▝"
+_FRAME_CHARS = "+-|"
 
 
 def should_use_color(mode: str, stream: TextIO) -> bool:
@@ -33,13 +42,40 @@ def should_use_color(mode: str, stream: TextIO) -> bool:
     return bool(getattr(stream, "isatty", lambda: False)()) and term.lower() != "dumb"
 
 
+def _char_color(ch: str) -> str:
+    code = ord(ch)
+    if 0x2800 <= code <= 0x28FF:   # braille -> the orb
+        return ORACLE
+    if ch in _BLOCKS:             # half-block -> the wordmark
+        return TITLE
+    if ch in _FRAME_CHARS:        # dashed frame
+        return FRAME
+    return MUTED
+
+
 def colorize_banner(text: str) -> str:
     rendered: list[str] = []
-    for index, line in enumerate(text.splitlines(keepends=True)):
-        body = line[:-1] if line.endswith("\n") else line
+    for line in text.splitlines(keepends=True):
         newline = "\n" if line.endswith("\n") else ""
-        color = _line_color(index, body)
-        rendered.append(f"{color}{body}{RESET}{newline}")
+        body = line[:-1] if newline else line
+        out = ""
+        i = 0
+        n = len(body)
+        while i < n:
+            ch = body[i]
+            if ch == " ":            # leave plain spaces uncolored
+                out += " "
+                i += 1
+                continue
+            color = _char_color(ch)
+            j = i
+            run = ""
+            while j < n and body[j] != " " and _char_color(body[j]) == color:
+                run += body[j]
+                j += 1
+            out += f"{color}{run}{RESET}"
+            i = j
+        rendered.append(out + newline)
     return "".join(rendered)
 
 
@@ -48,17 +84,3 @@ def render_banner(*, color: str = "auto", stream: TextIO) -> str:
     if should_use_color(color, stream):
         return colorize_banner(text)
     return text
-
-
-def _line_color(index: int, line: str) -> str:
-    if index == 0 or line.startswith("╚"):
-        return BORDER
-    if "NO QUOTE // NO CLAIM" in line:
-        return VERDICT
-    if index <= 6:
-        return TITLE
-    if "⣿" in line or "⠛" in line or "⢀" in line:
-        return ORACLE
-    if "evidence" in line or "belief ==" in line or "every answer" in line:
-        return SIGNAL
-    return MUTED

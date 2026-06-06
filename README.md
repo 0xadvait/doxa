@@ -1,23 +1,32 @@
+<p align="center">
+  <img src="assets/doxa_text.png" alt="DOXA" width="700">
+</p>
+
+<p align="center">
+  <img src="assets/cyber_orb.png" alt="DOXA belief oracle" width="170">
+</p>
+
+<p align="center"><b>DOXA // BELIEF ORACLE</b> &nbsp;&middot;&nbsp; <em>quote-first knowledge for agents</em> &nbsp;&middot;&nbsp; <b>NO QUOTE // NO CLAIM</b></p>
+
+The terminal splash, printed by `doxa` (or `doxa banner`):
+
 ```text
-+------------------------------------------------------------------------------+
-|                     ██████╗   ██████╗  ██╗  ██╗  █████╗                      |
-|                     ██╔══██╗ ██╔═══██╗ ╚██╗██╔╝ ██╔══██╗                     |
-|                     ██║  ██║ ██║   ██║  ╚███╔╝  ███████║                     |
-|                     ██║  ██║ ██║   ██║  ██╔██╗  ██╔══██║                     |
-|                     ██████╔╝ ╚██████╔╝ ██╔╝ ██╗ ██║  ██║                     |
-|                     ╚═════╝   ╚═════╝  ╚═╝  ╚═╝ ╚═╝  ╚═╝                     |
++- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
 |                                                                              |
-|                            DOXA // BELIEF ORACLE                             |
-|                       quote-first knowledge for agents                       |
-|                             NO QUOTE // NO CLAIM                             |
+|                            █████████▄   ▄██████▄ ▀████  ▄████   █████▄       |
+|   ⠀⠀⠀⠀⢀⡤⠖⣺⠟⢹⡏⠻⣗⠲⢤⡀⠀⠀⠀⠀     ██████████▄ ██████████ ████▄ ████    ██████       |
+|   ⠀⠀⢠⡞⠉⠀⡼⠁⢀⣸⣇⡀⠈⢧⠀⠉⢳⡄⠀⠀     ████  ▀████ ███▀ ▀████  ████████▀   ▄██████       |
+|   ⠀⡴⠃⠉⠉⢹⠋⠉⠉⢹⡏⠉⠉⠙⡏⠉⠉⠘⢦⠀     ████   ████ ███▄  ████  ▀███████    ████████      |
+|   ⣸⠁⠀⠀⠀⡿⢀⡤⠴⢞⡳⠦⢤⡀⢻⠀⠀⠀⠈⣇     ████   ████ ███   ████   ██████▀    ███ ████      |
+|   ⣏⣀⣀⣀⣀⡟⠉⠀⡞⣩⣍⢳⠀⠉⢻⣀⣀⣀⣀⣹     ████   ████ ███   ████    █████    ████ ████      |
+|   ⣏⠉⠉⠉⠉⡷⣄⠀⢧⣙⣋⡼⠀⣠⢾⠉⠉⠉⠉⣹     ████   ████ ███   ████   ▄█████    ████ ▀████     |
+|   ⢹⡀⠀⠀⠀⣷⠈⠙⠲⢦⡴⠖⠋⠁⣾⠀⠀⠀⢀⡏     ████   ████ ███   ████   ███████  ▄███▄ ▄████     |
+|   ⠀⠳⣄⣀⣀⣸⣄⣀⣀⣸⣇⣀⣀⣠⣇⣀⣀⢠⠞⠀     ████   ████ ███   ████  ████████▄ ███████████▄    |
+|   ⠀⠀⠈⠧⣀⠀⠳⡀⠀⢸⡇⠀⢀⡞⠀⣀⠼⠃⠀⠀     ████  ▄████ ████▄▄████  ████▀████ ████▀▀▀█████    |
+|   ⠀⠀⠀⠀⠈⠑⠲⢽⣦⣸⣇⣴⡯⠴⠚⠁⠀⠀⠀⠀     ███████████ ██████████ ████  ████████▀    ████    |
+|                            █████████▀   ▀██████▀ ▄███▀   ███████     ████    |
 |                                                                              |
-|                     ⢀⣠⣤⣤⣀                 .    .:*       +       .           |
-|                   ⣠⣾⣿⠟⠛⠻⣿⣷⣄              evidence rises like signal          |
-|                ⢰⣿⣿⡏  ◉  ◉  ⢹⣿⣿⡆            belief == claim + receipts        |
-|               ⠘⣿⣿⣇   ▵    ⣸⣿⣿⠃            every answer carries a quote       |
-|                  ⠈⠻⣿⣷⣤⣴⣿⠟⠁              DOXA keeps the oracle honest         |
-|                      ⠉⠛⠛⠉                 .       *      .:*     +           |
-+------------------------------------------------------------------------------+
++- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
 ```
 
 # doxa
@@ -677,6 +686,11 @@ records by hand, then run `doxa eval`.
 Public-domain or explicitly licensed examples only. Do not add private corpora,
 API keys, generated secrets, or network-dependent tests. Keep core dependencies
 minimal and make optional integrations explicit through extras.
+
+The terminal banner (`doxa/_assets/banner.txt`) is generated from the source art
+in `assets/` -- the DOXA wordmark is half-block, the oracle orb is braille. To
+regenerate it after changing the art, run `python3 tools/build_banner.py`
+(needs Pillow).
 
 Run:
 
