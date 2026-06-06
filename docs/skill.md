@@ -5,6 +5,10 @@ skill lives at [skill/SKILL.md](../skill/SKILL.md). It is harness-neutral: the
 skill does not import Python modules or assume a specific agent runtime. It
 shells out to the installed `doxa` CLI.
 
+doxa works well as a custom knowledge base for Claude Code, Codex, Hermes,
+OpenCLAW, and similar harnesses because the agent never has to trust an
+ungrounded summary. The rule is simple: No quote, no claim.
+
 ## Install
 
 ```bash
@@ -34,6 +38,13 @@ For answers, the skill tells the agent to run:
 doxa query "<question>" --search hybrid
 ```
 
+The agent may add domain focus when useful:
+
+```bash
+doxa query "<question>" --search hybrid --domain technical
+doxa query "<question>" --search hybrid --domains policy,finance
+```
+
 For growth, it tells the agent to run:
 
 ```bash
@@ -47,4 +58,6 @@ printf '%s' "$FETCHED_TEXT" | doxa ingest - --title "Title" --url "https://sourc
 ```
 
 The returned beliefs and quotes are the only ground truth. The agent must not
-invent quotes or claims.
+invent quotes, sources, attributions, or claims. If retrieval is thin, the
+agent should say that the belief base does not contain enough grounded evidence
+and offer to ingest more trusted sources.

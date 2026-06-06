@@ -12,6 +12,7 @@ Important sections:
 - `sources`: URL fetcher settings. `requests` is the default; `brightdata`
   routes URL ingestion through BrightData Web Unlocker using env vars.
 - `retrieval`: keyword and hybrid search parameters.
+- `preferences`: user preference weights, including retrieval/mining domains.
 - `postgres`: DSN env var and table prefix for semantic search.
 
 Core commands work with no API key. Ingestion needs a configured provider.
@@ -31,3 +32,51 @@ sources:
 Use `doxa ingest - --title "Title"` for stdin text, including content fetched by
 an agent's BrightData MCP. Use `doxa ingest <url> --via brightdata` for direct
 BrightData CLI fetching.
+
+Retrieval defaults:
+
+```yaml
+retrieval:
+  default_search: keyword
+  limit: 5
+  candidate_limit: 50
+  quote_boost: 2.0
+  max_quotes_per_result: null
+  bm25_k1: 1.5
+  bm25_b: 0.75
+  rrf_k: 60
+```
+
+`candidate_limit` overfetches before final ranking. `quote_boost` helps a rare
+phrase in a quote surface the linked belief. `max_quotes_per_result` can cap
+linked quotes when you want compact output; leave it `null` to preserve every
+linked quote in text and JSON output.
+
+Domain preferences:
+
+```yaml
+preferences:
+  domains:
+    general: 2
+    research: 3
+    technical: 3
+    policy: 2
+    creative: 2
+```
+
+Weights are integers from 0 to 10. Mining prompts see these as `domain:<slug>`
+tagging hints. Retrieval gives a small boost to beliefs or quotes with matching
+domain tags.
+
+Manage domains from the CLI:
+
+```bash
+doxa domains
+doxa domains set technical 8
+doxa domains add finance 6
+doxa domains remove creative
+doxa domains reset
+doxa domains export
+```
+
+All domain subcommands accept `--config`.

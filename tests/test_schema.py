@@ -30,3 +30,16 @@ def test_belief_round_trip() -> None:
     assert belief.to_dict()["source"]["title"] == "Apology"
     assert belief.conviction == 0.96
 
+
+def test_belief_accepts_legacy_conviction_labels() -> None:
+    belief = Belief.from_dict(
+        {
+            "id": "b1",
+            "belief": "Legacy local stores may use label convictions.",
+            "reasoning": "Older doxa data used strings such as strong/exploring.",
+            "stance": "endorses",
+            "conviction": "strong",
+        }
+    )
+    assert belief.conviction == 0.85
+

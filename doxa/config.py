@@ -69,9 +69,21 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "retrieval": {
         "default_search": "keyword",
         "limit": 5,
+        "candidate_limit": 50,
+        "quote_boost": 2.0,
+        "max_quotes_per_result": None,
         "bm25_k1": 1.5,
         "bm25_b": 0.75,
         "rrf_k": 60,
+    },
+    "preferences": {
+        "domains": {
+            "general": 2,
+            "research": 3,
+            "technical": 3,
+            "policy": 2,
+            "creative": 2,
+        },
     },
     "embeddings": {
         "model": "BAAI/bge-small-en-v1.5",
@@ -132,8 +144,9 @@ def load_config(path: str | Path | None = None, *, allow_demo_default: bool = Tr
         config["_config_path"] = ""
         config["_base_dir"] = str(Path.cwd())
         if allow_demo_default:
-            demo_dir = PROJECT_ROOT / "examples" / "demo" / "data"
-            config["data"]["dir"] = str(demo_dir)
+            from .resources import demo_data_dir
+
+            config["data"]["dir"] = str(demo_data_dir())
     return config
 
 

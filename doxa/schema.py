@@ -17,6 +17,34 @@ def normalize_ws(text: str) -> str:
     return re.sub(r"\s+", " ", text or "").strip()
 
 
+def _parse_conviction(raw: Any) -> float:
+    """Parse numeric or legacy label convictions into a 0..1 confidence score."""
+
+    if isinstance(raw, str):
+        label = raw.strip().lower()
+        legacy_labels = {
+            "weak": 0.25,
+            "low": 0.25,
+            "exploring": 0.45,
+            "medium": 0.55,
+            "moderate": 0.55,
+            "strong": 0.85,
+            "high": 0.85,
+            "certain": 0.95,
+        }
+        if label in legacy_labels:
+            return legacy_labels[label]
+    try:
+        conviction = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise DoxaError("Belief.conviction must be a number or known label (weak, exploring, medium, strong).") from exc
+    if conviction < 0:
+        return 0.0
+    if conviction > 1:
+        return 1.0
+    return conviction
+
+
 def quote_is_verbatim(quote: str, source_text: str) -> bool:
     """Return true when ``quote`` occurs in ``source_text`` after whitespace normalization."""
 
@@ -75,10 +103,7 @@ class Belief:
         tags = raw.get("tags") or []
         if not isinstance(tags, list):
             raise DoxaError("Belief.tags must be a list")
-        try:
-            conviction = float(raw["conviction"])
-        except (TypeError, ValueError) as exc:
-            raise DoxaError("Belief.conviction must be a number") from exc
+        conviction = _parse_conviction(raw["conviction"])
         return cls(
             id=str(raw["id"]).strip(),
             belief=str(raw["belief"]).strip(),
