@@ -95,6 +95,9 @@ retrieval:
   candidate_limit: 50
   # Quote document hits are folded back to linked beliefs with this multiplier.
   quote_boost: 2.0
+  # Active domain aliases add a small candidate-discovery BM25 leg before slicing.
+  # Set to 0, or pass --no-domain-boost, for literal keyword-only candidates.
+  domain_query_boost: 0.25
   # Display cap; matched quote hits are shown before other linked quotes.
   max_quotes_per_result: null  # set an integer to cap displayed/returned quotes per belief
   bm25_k1: 1.5

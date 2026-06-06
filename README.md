@@ -281,7 +281,9 @@ Domains are represented as ordinary `domain:<slug>` tags on beliefs and quotes,
 so old JSONL stores keep working. Retrieval also matches legacy plain tags through
 `preferences.domain_aliases`; for example, `--domain crypto` can boost records
 tagged `token-economics`, and `--domain relationships` can boost records tagged
-`trust`.
+`trust`. Keyword search also uses active aliases as a low-weight candidate
+discovery leg; set `retrieval.domain_query_boost: 0` or pass `--no-domain-boost`
+for literal keyword-only candidates.
 
 ---
 
@@ -591,7 +593,8 @@ again later.
 
 Domain preferences use normal tags such as `domain:technical`, plus optional
 plain-tag aliases under `preferences.domain_aliases`; no schema migration is
-required.
+required. Keyword search can use active aliases for low-weight candidate
+discovery before final ranking.
 
 ---
 

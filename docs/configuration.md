@@ -41,6 +41,7 @@ retrieval:
   limit: 5
   candidate_limit: 50
   quote_boost: 2.0
+  domain_query_boost: 0.25
   max_quotes_per_result: null
   bm25_k1: 1.5
   bm25_b: 0.75
@@ -48,9 +49,12 @@ retrieval:
 ```
 
 `candidate_limit` overfetches before final ranking. `quote_boost` helps a rare
-phrase in a quote surface the linked belief. `max_quotes_per_result` can cap
-linked quotes when you want compact output; leave it `null` to preserve every
-linked quote in text and JSON output.
+phrase in a quote surface the linked belief. `domain_query_boost` adds a small
+active-domain alias leg before keyword candidate slicing, so legacy plain tags
+can be discovered even when the literal query does not contain those tag terms;
+set it to `0` for literal keyword-only candidate selection. `max_quotes_per_result`
+can cap linked quotes when you want compact output; leave it `null` to preserve
+every linked quote in text and JSON output.
 
 Domain preferences:
 
@@ -70,9 +74,10 @@ preferences:
 
 Weights are integers from 0 to 10. Mining prompts see these as `domain:<slug>`
 tagging hints. Retrieval gives a small boost to beliefs or quotes with matching
-domain tags. Alias terms extend the exact `domain:<slug>` match for retrieval,
-so older stores with plain tags such as `token-economics`, `founders`, `trust`,
-`taste`, or `health` do not need a JSONL migration.
+domain tags, and the keyword retriever can use active aliases as a low-weight
+candidate-discovery leg. Alias terms extend the exact `domain:<slug>` match for
+retrieval, so older stores with plain tags such as `token-economics`,
+`founders`, `trust`, `taste`, or `health` do not need a JSONL migration.
 
 Manage domains from the CLI:
 

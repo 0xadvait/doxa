@@ -338,3 +338,80 @@ def test_domain_boost_can_promote_custom_legacy_alias_tag(tmp_path: Path) -> Non
 
     assert unboosted[0].belief.id == "b_plain"
     assert boosted[0].belief.id == "b_custom"
+
+
+def test_domain_alias_query_boost_can_discover_legacy_tagged_candidate(tmp_path: Path) -> None:
+    source = _source()
+    config = _write_store(
+        tmp_path,
+        beliefs=[
+            {
+                "id": "b_literal",
+                "belief": "Celadon planning is a generic builder workflow.",
+                "reasoning": "This is the only belief with the literal query term.",
+                "stance": "supports",
+                "conviction": 0.8,
+                "tags": [],
+                "source": source,
+            },
+            {
+                "id": "b_legacy",
+                "belief": "Clinical milestones should be sequenced by evidence windows.",
+                "reasoning": "The legacy plain tag should participate in candidate discovery.",
+                "stance": "supports",
+                "conviction": 0.8,
+                "tags": ["health"],
+                "source": source,
+            },
+        ],
+        quotes=[
+            {
+                "id": "q_literal",
+                "quote": "A generic planning quote supports the literal result.",
+                "speaker": "",
+                "source": source,
+                "context": "",
+                "tags": [],
+                "belief_ids": ["b_literal"],
+            },
+            {
+                "id": "q_legacy",
+                "quote": "A clinical milestone quote supports the legacy-tagged result.",
+                "speaker": "",
+                "source": source,
+                "context": "",
+                "tags": ["health"],
+                "belief_ids": ["b_legacy"],
+            },
+        ],
+    )
+    config["retrieval"]["candidate_limit"] = 2
+
+    unboosted, _ = search(
+        "celadon",
+        config,
+        search_type="keyword",
+        limit=2,
+        domains=["biotech"],
+        domain_boost=False,
+    )
+    disabled = deepcopy(config)
+    disabled["retrieval"]["domain_query_boost"] = 0
+    zero_boost, _ = search(
+        "celadon",
+        disabled,
+        search_type="keyword",
+        limit=2,
+        domains=["biotech"],
+    )
+    boosted, _ = search(
+        "celadon",
+        config,
+        search_type="keyword",
+        limit=2,
+        domains=["biotech"],
+    )
+
+    assert [result.belief.id for result in unboosted] == ["b_literal"]
+    assert [result.belief.id for result in zero_boost] == ["b_literal"]
+    assert "b_legacy" in [result.belief.id for result in boosted]

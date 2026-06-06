@@ -146,6 +146,23 @@ def _rank_results(
     return [result for _, result in boosted[:limit]]
 
 
+def _domain_query_terms(config: dict[str, Any], domains: list[str] | None, *, enabled: bool) -> list[str]:
+    active_weights = active_domain_weights(config, domains, enabled=enabled)
+    if not active_weights:
+        return []
+    aliases = domain_aliases(config)
+    terms: list[str] = []
+    seen: set[str] = set()
+    for slug in active_weights:
+        for value in aliases.get(slug, [slug]):
+            for term in tokenize(value):
+                if term in seen:
+                    continue
+                seen.add(term)
+                terms.append(term)
+    return terms
+
+
 def keyword_search(
     query: str,
     store: JsonlStore,
@@ -158,6 +175,7 @@ def keyword_search(
     b: float = 0.75,
     domains: list[str] | None = None,
     domain_boost: bool = True,
+    rank_domain_boost: bool | None = None,
 ) -> list[RetrievalResult]:
     """Pure-Python BM25 over separate belief docs and quote docs."""
 
@@ -177,7 +195,20 @@ def keyword_search(
     if not query_terms:
         return []
     candidate_limit = max(candidate_limit or limit, limit)
-    doc_scores = _bm25_scores(query_terms, [tokenize(doc.text) for doc in docs], k1=k1, b=b)[:candidate_limit]
+    doc_terms = [tokenize(doc.text) for doc in docs]
+    combined_doc_scores: Counter[int] = Counter()
+    for doc_index, raw_score in _bm25_scores(query_terms, doc_terms, k1=k1, b=b):
+        combined_doc_scores[doc_index] += raw_score
+    domain_query_boost = max(float(store.config.get("retrieval", {}).get("domain_query_boost", 0.25)), 0.0)
+    if domain_boost and domain_query_boost > 0:
+        for doc_index, raw_score in _bm25_scores(
+            _domain_query_terms(store.config, domains, enabled=True),
+            doc_terms,
+            k1=k1,
+            b=b,
+        ):
+            combined_doc_scores[doc_index] += raw_score * domain_query_boost
+    doc_scores = sorted(combined_doc_scores.items(), key=lambda item: (-item[1], item[0]))[:candidate_limit]
     belief_scores: Counter[str] = Counter()
     matched_quote_scores: dict[str, Counter[str]] = {}
     for doc_index, raw_score in doc_scores:
@@ -195,6 +226,8 @@ def keyword_search(
             matched_quote_scores.setdefault(belief_id, Counter())[doc.quote.id] += quote_score
     if not belief_scores:
         return []
+    if rank_domain_boost is None:
+        rank_domain_boost = domain_boost
     belief_order = {belief.id: index for index, belief in enumerate(beliefs)}
     quote_order = {quote.id: index for index, quote in enumerate(quotes)}
     grouped: list[RetrievalResult] = []
@@ -215,7 +248,7 @@ def keyword_search(
         limit=limit,
         max_quotes_per_result=max_quotes_per_result,
         domains=domains,
-        domain_boost=domain_boost,
+        domain_boost=rank_domain_boost,
     )
 
 
@@ -359,7 +392,9 @@ def search(
             candidate_limit=candidate_limit,
             quote_boost=quote_boost,
             max_quotes_per_result=max_quotes_per_result,
-            domain_boost=False,
+            domains=domains,
+            domain_boost=domain_boost,
+            rank_domain_boost=False,
         )
         warnings: list[str] = []
         try:

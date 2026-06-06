@@ -51,7 +51,10 @@ prompts ask the provider to tag clear matches as `domain:<slug>` on beliefs and
 quotes. Retrieval then gives matching tags a small boost after overfetching.
 It also checks `preferences.domain_aliases` so active domains can match older
 plain tags. For example, `crypto` can match `token-economics`, `startups` can
-match `founders`, and `relationships` can match `trust`.
+match `founders`, and `relationships` can match `trust`. Keyword search also
+uses active aliases as a conservative candidate-discovery leg before slicing;
+configure this with `retrieval.domain_query_boost` or set it to `0` for literal
+keyword-only candidate selection.
 
 View or edit preferences:
 
