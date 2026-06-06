@@ -103,3 +103,44 @@ def test_lenses_add_fork_remove_roundtrip(tmp_path, monkeypatch) -> None:
 def test_lenses_add_requires_description(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("DOXA_LENS_DIR", str(tmp_path))
     assert main(["lenses", "add", "empty"]) != 0  # no --from/--file/--description
+
+
+def test_lens_choice_resolution() -> None:
+    from doxa.cli import _lens_choice
+
+    names = ["durable-beliefs", "founder-strategy", "investment-memo"]
+    assert _lens_choice("2", names) == "founder-strategy"
+    assert _lens_choice("founder-strategy", names) == "founder-strategy"
+    assert _lens_choice("", names) is None          # blank -> custom
+    assert _lens_choice("custom", names) is None
+    assert _lens_choice("99", names) is None         # out of range -> custom
+    assert _lens_choice("nope", names) is None       # unknown name -> custom
+
+
+def test_prompt_lens_returns_chosen_template(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DOXA_LENS_DIR", str(tmp_path))  # built-ins only
+    import doxa.cli as cli
+
+    monkeypatch.setattr(cli, "_prompt_text", lambda *a, **k: "founder-strategy")
+    assert cli._prompt_lens()["name"] == "founder-strategy"
+    monkeypatch.setattr(cli, "_prompt_text", lambda *a, **k: "custom")
+    assert cli._prompt_lens() == {}
+
+
+def test_interactive_init_uses_picked_lens(tmp_path, monkeypatch) -> None:
+    import argparse
+
+    import doxa.cli as cli
+
+    monkeypatch.setenv("DOXA_LENS_DIR", str(tmp_path / "lenses"))
+    # provider, model, lens-pick, then Enter x3 for name/description/question
+    seq = iter(["codex-cli", "", "investment-memo", "", "", ""])
+    # mirror real _prompt_text: empty input falls back to the shown default
+    monkeypatch.setattr(cli, "_prompt_text", lambda label, default="", *a, **k: (next(seq) or default))
+    ns = argparse.Namespace(provider="codex-cli", model=None, api_key_env=None, base_url=None,
+                            lens_template=None, lens_name=None, lens=None, lens_question=None)
+    answers = cli._init_answers(ns, interactive=True)
+    template = get_lens_template("investment-memo")
+    assert answers["lens_name"] == "investment-memo"
+    assert answers["lens_stances"] == template["stances"]
+    assert answers["lens_description"] == template["description"]
