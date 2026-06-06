@@ -461,6 +461,16 @@ sources:
   codex: { timeout: 300 }        # argv/prompt also overridable, e.g. sources.codex.argv
 ```
 
+Agents run **safely by default** (no approval-bypass). For unattended runs on
+sources you trust, **`--yolo`** flips on the danger opt-ins for that ingest --
+codex `--dangerously-bypass-approvals-and-sandbox`, hermes `--yolo`, and the
+`command` shell (equivalent to setting `sources.codex.unsafe_bypass` /
+`sources.hermes.unsafe_yolo` / `sources.command.allow_shell`):
+
+```bash
+doxa ingest https://target.example --via codex --yolo
+```
+
 **Choose how to scrape** with `--mode` / `--prompt` (agent + `command` fetchers).
 `--prompt` is free-form, so the agent can use whatever it has -- SERP search,
 browser automation, structured extraction, platform-specific endpoints -- to

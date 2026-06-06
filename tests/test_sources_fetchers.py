@@ -149,3 +149,20 @@ def test_command_fetcher_substitutes_prompt() -> None:
     config = {"sources": {"command": {"argv": ["python3", "-c", "import sys;print('# Cmd\\n\\n'+sys.argv[1])", "{prompt}"]}}}
     rec = load_url("https://x", fetcher="command", config=config, fetch_prompt="do the thing")
     assert "do the thing" in rec.text
+
+
+def test_yolo_enables_unattended_agent_fetching() -> None:
+    from doxa.cli import _apply_yolo, build_parser
+    from doxa.sources.fetchers import _AGENT_PRESETS, _CODEX_BYPASS_FLAG, _agent_argv
+
+    assert build_parser().parse_args(["ingest", "-", "--yolo"]).yolo is True
+
+    config: dict = {}
+    _apply_yolo(config)
+    s = config["sources"]
+    assert s["codex"]["unsafe_bypass"] is True
+    assert s["hermes"]["unsafe_yolo"] is True
+    assert s["command"]["allow_shell"] is True
+    # the agent argv builder honors the flipped opt-ins
+    assert _CODEX_BYPASS_FLAG in _agent_argv("codex", _AGENT_PRESETS["codex"]["argv"], s["codex"])
+    assert "--yolo" in _agent_argv("hermes", _AGENT_PRESETS["hermes"]["argv"], s["hermes"])

@@ -322,8 +322,20 @@ def _mining_progress(title: str):
     return cb
 
 
+def _apply_yolo(config: dict[str, Any]) -> None:
+    """doxa's yolo mode: let agent/command fetchers run unattended for this ingest --
+    codex bypass-approvals, hermes --yolo, and the command shell. Trusted sources only."""
+    sources = config.setdefault("sources", {})
+    sources.setdefault("codex", {})["unsafe_bypass"] = True
+    sources.setdefault("hermes", {})["unsafe_yolo"] = True
+    sources.setdefault("command", {})["allow_shell"] = True
+
+
 def cmd_ingest(args: argparse.Namespace) -> int:
     config = load_config(args.config, allow_demo_default=False)
+    if getattr(args, "yolo", False):
+        _apply_yolo(config)
+        _hint("yolo: agent fetchers run with bypass/--yolo + shell enabled for this ingest -- trusted sources only.")
     store = JsonlStore(config)
     source_args = args.source if isinstance(args.source, list) else [args.source]
     stdin_text = sys.stdin.read() if "-" in source_args else None
@@ -743,6 +755,11 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument(
         "--prompt",
         help="Fetch/extract instruction for agent (claude/codex/hermes) or command fetchers, e.g. 'extract product name, price, reviews as JSON'.",
+    )
+    ingest.add_argument(
+        "--yolo",
+        action="store_true",
+        help="Run agent/command fetchers unattended: codex --dangerously-bypass-approvals, hermes --yolo, command shell. Trusted sources only.",
     )
     ingest.set_defaults(func=cmd_ingest)
 
