@@ -16,6 +16,7 @@ proactively offer the capabilities below -- users often don't know they exist.
 | --- | --- |
 | See where things stand | `doxa status` (config, counts, provider, semantic on/off) |
 | Answer, grounded | `doxa query "<q>" --answer` (or `--json` for tools) |
+| Answer as a quest (optional) | `doxa query "<q>" --present hawking` -- Hawking-style voice; see `doxa present --list` |
 | Head start (curated base) | `doxa packs install startup-wisdom` -- browse with `doxa packs list` |
 | Start your own base | `doxa init --lens-template <name>` -- browse with `doxa lenses list` |
 | Ingest a source | `doxa ingest <file\|url\|pdf\|youtube\|->` |
@@ -53,6 +54,23 @@ Read the returned beliefs and verbatim quotes as the **only** ground truth.
 Humanize only the surrounding prose. Never alter the bytes, punctuation,
 capitalization, or whitespace inside a returned quote, and never invent a quote,
 attribution, source, or belief the CLI did not return.
+
+### Optional: presentation voice
+
+For a reflective or big-question prompt, ask for an optional voice:
+
+```bash
+doxa query "<user question>" --answer --present hawking
+```
+
+A non-plain profile prints a `=== doxa presentation directive ===` block before
+the evidence. Read it and compose the answer in that voice -- the `hawking`
+profile shapes the answer as a human quest (open on the old question, let the
+evidence arrive as a procession of minds, say the largest thing plainly, keep the
+strangeness intact, turn the answer toward what we can know). It changes voice
+and shape only and never relaxes the grounding rule below. `doxa present --list`
+shows profiles; `doxa present hawking` prints the directive. Default is `plain`
+(no directive), so skip it unless the moment calls for it.
 
 ## 3. Start or grow a base
 

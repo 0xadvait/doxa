@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 from importlib import resources
-from importlib.resources.abc import Traversable
 from pathlib import Path
+from typing import TYPE_CHECKING
 import shutil
 import tempfile
 
 from .schema import DoxaError
+
+if TYPE_CHECKING:
+    # importlib.resources.abc landed in 3.11; it is only needed for type
+    # annotations, which `from __future__ import annotations` keeps as strings,
+    # so it must not be imported at runtime (breaks Python 3.10).
+    from importlib.resources.abc import Traversable
 
 
 ASSET_PACKAGE = "doxa"

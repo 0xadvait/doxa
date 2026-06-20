@@ -97,7 +97,9 @@ def test_query_accepts_domain_flags() -> None:
     assert args.no_domain_boost is True
 
 
-def _query_args(*, as_json: bool = False, answer: bool = False) -> argparse.Namespace:
+def _query_args(
+    *, as_json: bool = False, answer: bool = False, present: str | None = None
+) -> argparse.Namespace:
     return argparse.Namespace(
         query="test question",
         config=None,
@@ -108,6 +110,7 @@ def _query_args(*, as_json: bool = False, answer: bool = False) -> argparse.Name
         no_domain_boost=False,
         json=as_json,
         answer=answer,
+        present=present,
     )
 
 

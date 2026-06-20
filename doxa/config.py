@@ -87,6 +87,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "bm25_b": 0.75,
         "rrf_k": 60,
     },
+    "presentation": {
+        # Optional voice for composing answers. "plain" leaves output unchanged;
+        # "hawking" emits a composition directive (see `doxa present --list`).
+        "default": "plain",
+    },
     "preferences": {
         "domains": {
             "general": 2,

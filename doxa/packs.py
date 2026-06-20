@@ -52,7 +52,8 @@ def _read_pack_lines(location: str, filename: str) -> list[str]:
         url = location.rstrip("/") + "/" + filename
         try:
             req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
-            with urllib.request.urlopen(req, timeout=120) as resp:
+            # scheme validated to http(s) above, so file:/custom schemes can't reach here
+            with urllib.request.urlopen(req, timeout=120) as resp:  # nosec B310
                 text = resp.read().decode("utf-8")
         except Exception as exc:  # noqa: BLE001
             raise DoxaError(f"could not fetch {url}: {exc}") from exc
@@ -154,7 +155,8 @@ def export_pack(
                 kept_quotes.append(Quote.from_dict(raw))
 
     sources: dict[tuple[str, str], SourceRecord] = {}
-    for obj in (*kept_beliefs, *kept_quotes):
+    records: list[Belief | Quote] = [*kept_beliefs, *kept_quotes]
+    for obj in records:
         ref = obj.source
         if not ref.title:
             continue
