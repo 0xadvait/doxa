@@ -16,6 +16,7 @@ users often don't know what's available.
 | Ingest | `doxa ingest <file\|url\|pdf\|youtube\|->` |
 | Hard pages | `doxa ingest <url> --via jina\|firecrawl\|brightdata\|claude\|codex\|hermes` `[--mode browser\|extract --prompt ...] [--yolo]` |
 | Answer | `doxa query "<q>" --answer` / `--json` / `--domain <slug>` / `--search hybrid` |
+| Voice (optional) | `doxa query "<q>" --present hawking` -- answer as a quest; `doxa present --list` |
 | Honest | `doxa eval` · `doxa sources list\|remove <id>` · `doxa domains set <slug> <0-10>` |
 | Agent skill | `doxa skill install --harness claude-code\|codex\|hermes\|openclaw` |
 
@@ -222,6 +223,21 @@ sources:
   command:
     argv: ["my-mcp-fetch", "{url}"]
 ```
+
+## Presentation Modes
+
+By default doxa returns evidence and you write the answer in your own voice. For
+reflective or big-question prompts, offer the optional `hawking` voice:
+
+```bash
+doxa present --list                                  # available voices
+doxa query "<user question>" --answer --present hawking
+```
+
+A non-plain mode prepends a composition directive to the query output. Follow it
+for voice and shape only -- it never relaxes the grounding rule in Discipline
+below. Set `presentation.default` in `doxa.yaml` to make a mode sticky. See
+[docs/presentation.md](docs/presentation.md).
 
 ## Install As A Harness Skill
 

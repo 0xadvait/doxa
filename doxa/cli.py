@@ -38,6 +38,7 @@ from .lenses import (
     user_lens_dir,
 )
 from .packs import export_pack, get_pack, install_pack, load_registry
+from .present import DEFAULT_PROFILE, PresentationProfile, available_profiles, get_profile
 from .resources import demo_config_path, skill_text
 from .schema import DoxaError, RetrievalResult
 from .sources import load_source
@@ -222,7 +223,7 @@ def _prompt_lens() -> dict[str, Any]:
         return {}
 
 
-def _init_answers(args: argparse.Namespace, *, interactive: bool) -> dict[str, str]:
+def _init_answers(args: argparse.Namespace, *, interactive: bool) -> dict[str, Any]:
     provider_default = _normalize_provider(args.provider)
     provider = _prompt_provider(provider_default) if interactive else provider_default
     defaults = PROVIDER_DEFAULTS[provider]
@@ -278,7 +279,7 @@ def _init_answers(args: argparse.Namespace, *, interactive: bool) -> dict[str, s
     }
 
 
-def _build_init_config(answers: dict[str, str], *, full: bool = False) -> dict[str, Any]:
+def _build_init_config(answers: dict[str, Any], *, full: bool = False) -> dict[str, Any]:
     if full:
         config: dict[str, Any] = deepcopy(DEFAULT_CONFIG)
     else:
@@ -478,8 +479,17 @@ def _store_has_beliefs(config: dict[str, Any]) -> bool:
         return True
 
 
+def _resolve_presentation(args: argparse.Namespace, config: dict[str, Any]) -> PresentationProfile:
+    """Pick the presentation profile: CLI flag wins, else config default."""
+
+    flag = getattr(args, "present", None)
+    configured = str(config.get("presentation", {}).get("default", DEFAULT_PROFILE))
+    return get_profile(flag if flag is not None else configured)
+
+
 def cmd_query(args: argparse.Namespace) -> int:
     config = load_config(args.config)
+    profile = _resolve_presentation(args, config)
     if not args.json and _is_demo_fallback(config):
         _hint("note: no doxa.yaml here -- querying the bundled demo base. Run `doxa init` to build your own.")
     domains = parse_domain_selectors(args.domain, args.domains)
@@ -494,7 +504,12 @@ def cmd_query(args: argparse.Namespace) -> int:
     for warning in warnings:
         print(f"warning: {warning}", file=sys.stderr)
     if args.json:
-        print(json.dumps([result.to_dict() for result in results], indent=2, ensure_ascii=False))
+        payload: Any = [result.to_dict() for result in results]
+        # Plain stays a bare list (backward compatible); a non-plain profile
+        # wraps the list so the directive travels with the evidence.
+        if not profile.is_plain():
+            payload = {"presentation": profile.to_dict(), "results": payload}
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
         return 0
     if not results:
         print("No matching beliefs found.")
@@ -504,11 +519,35 @@ def cmd_query(args: argparse.Namespace) -> int:
             else:
                 _hint("hint: try broader terms, raise --top, or --search hybrid if you've run `doxa index`.")
         return 0
+    directive = profile.render_directive()
+    if directive:
+        # The directive shapes voice only; the evidence below stays the ground truth.
+        print(directive)
+        print("")
     if args.answer:
         print(render_terminal_answer(args.query, results))
         return 0
     for index, result in enumerate(results, start=1):
         print(_format_result(result, index))
+    return 0
+
+
+def cmd_present(args: argparse.Namespace) -> int:
+    if args.list:
+        for name in available_profiles():
+            profile = get_profile(name)
+            marker = " (default)" if name == DEFAULT_PROFILE else ""
+            print(f"{name}{marker}: {profile.summary}")
+        return 0
+    profile = get_profile(args.name)
+    if args.json:
+        print(json.dumps(profile.to_dict(), indent=2, ensure_ascii=False))
+        return 0
+    directive = profile.render_directive()
+    if directive:
+        print(directive)
+    else:
+        print(f"{profile.name}: {profile.summary}")
     return 0
 
 
@@ -1002,8 +1041,20 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("--domains", default="", help="Comma-separated domain slugs to boost.")
     query.add_argument("--no-domain-boost", action="store_true", help="Disable configured domain preference boosts.")
     query.add_argument("--answer", action="store_true", help="Format results as a clean evidence brief (claim + grounding quotes).")
+    query.add_argument(
+        "--present",
+        choices=available_profiles(),
+        default=None,
+        help="Optional presentation voice. Emits a composition directive with the evidence. Default: presentation.default in config (plain).",
+    )
     query.add_argument("--json", action="store_true")
     query.set_defaults(func=cmd_query)
+
+    present = subparsers.add_parser("present", help="Show an optional presentation profile (composition directive).")
+    present.add_argument("name", nargs="?", default=DEFAULT_PROFILE, help="Profile name. Default: plain.")
+    present.add_argument("--list", action="store_true", help="List available presentation profiles.")
+    present.add_argument("--json", action="store_true")
+    present.set_defaults(func=cmd_present)
 
     eval_parser = subparsers.add_parser("eval", help="Run faithfulness and link-integrity checks.")
     eval_parser.add_argument("--config")

@@ -129,6 +129,15 @@ retrieval:
   bm25_b: 0.75
   rrf_k: 60
 
+presentation:
+  # Optional voice for composing answers from retrieved evidence.
+  #   plain   - no directive; the agent answers in its own voice (default).
+  #   hawking - emit a composition directive that shapes the answer as a human
+  #             quest (see `doxa present hawking`). Voice only; never changes the
+  #             verbatim-grounding guarantee.
+  # Override per query with `doxa query ... --present hawking`.
+  default: plain
+
 preferences:
   # Domain weights run from 0 to 10. Matching domain:<slug> tags get a small
   # retrieval boost and are also shown to the mining prompt as tagging hints.

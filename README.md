@@ -83,7 +83,7 @@ Keyword search works with no API key, database, embedding model, or network.
 ## Docs
 
 - [Configuration](docs/configuration.md) · [Providers](docs/providers.md) · [Ingestion](docs/ingestion.md)
-- [Retrieval](docs/retrieval.md) · [Writing a lens](docs/writing-a-lens.md) · [Schema](docs/schema.md) · [Architecture](docs/architecture.md)
+- [Retrieval](docs/retrieval.md) · [Writing a lens](docs/writing-a-lens.md) · [Schema](docs/schema.md) · [Architecture](docs/architecture.md) · [Presentation modes](docs/presentation.md)
 - [Agent skill](docs/skill.md) · [AGENTS.md](AGENTS.md) · [skill/SKILL.md](skill/SKILL.md)
 - [Example configs gallery](examples/README.md) -- copy-ready `doxa.yaml` templates
 - [Example Q&A](docs/examples-qa.md) -- grounded answers on the demo base
@@ -100,6 +100,34 @@ including a real Socratic tension doxa surfaces rather than flattens -- is in
 doxa demo
 doxa query "Should I trust my own judgment over the crowd?"
 ```
+
+---
+
+## Presentation modes (optional)
+
+doxa returns evidence; the agent reading it writes the prose answer. A
+**presentation mode** is an optional voice for that final step. The default is
+`plain` (output unchanged). The flagship optional mode is `hawking`, distilled
+from how Stephen Hawking presented evidence in the first two chapters of *A Brief
+History of Time*: open on the ancient question rather than the apparatus, let the
+evidence arrive as a procession of minds, say the largest thing in the plainest
+sentence, keep the genuine strangeness intact, and turn the answer into a
+question about what we can know.
+
+```bash
+doxa present --list                 # list modes
+doxa present hawking                # read the composition directive
+doxa query "did time have a beginning?" --answer --present hawking
+```
+
+With a non-plain mode, `doxa query` prints a `=== doxa presentation directive ===`
+block before the evidence; an agent reads it and composes in that voice. The mode
+changes voice and shape only -- it never loosens the verbatim-grounding rule, so
+the answer is still built only from returned beliefs and quotes. With `--json`, a
+non-plain mode wraps output as `{"presentation": {...}, "results": [...]}`; `plain`
+stays a bare list. Make a mode sticky in `doxa.yaml` with `presentation.default`,
+or add your own by registering a `PresentationProfile` in `doxa/present.py`. See
+[docs/presentation.md](docs/presentation.md).
 
 ---
 
